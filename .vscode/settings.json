@@ -1,0 +1,6 @@
+{
+    "python.pythonPath": ".venv/bin/python",
+    "editor.formatOnSave": true,
+    "emmet.showSuggestionsAsSnippets": true,
+    "emmet.triggerExpansionOnTab": true,
+}
