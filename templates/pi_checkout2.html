@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}
+Hold this Payment!
+{% endblock title %}
+
+{% block main %}
+<div class="container mt-4">
+    <div class="col s4"></div>
+    <div class="col s4">
+        <div class="card mt-4">
+            <div class="card-image">
+            <img 
+              src="https://images.pexels.com/photos/2847648/pexels-photo-2847648.jpeg?cs=srgb&dl=pexels-alexander-kovalev-2847648.jpg&fm=jpg" 
+              alt="gradient"
+              height=300
+              >
+                <span class="card-title black-text ">Payment Intent for Stuff</span>
+            </div>
+            <div class="card-content">
+                <form action="" id="payment-form" data-secret="{{client_secret}}">
+                    {% csrf_token %}
+                    <div id="card-element">
+                        <!-- Elements to create inputs here-->
+                    </div>
+                    <div id="card-errors" class="mt-2 alert" role="alert">
+                        <!-- Errors loaded here-->
+                    </di>
+                </form>
+            </div>
+            <div class="card-action center-align">
+                <button type="submit" id="submitBtn" class="btn indigo darken-3" form="payment-form" >
+                    Submit Payment
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="col s4"></div>
+</div>
+{% endblock main %}
+
+{% block script %}
+<script>
+fetch('/config/').then(response => response.json()).then((data) => {
+    var stripe = Stripe(data.publicKey)
+    var elements = stripe.elements()
+
+    var style = {
+        base: {
+            color: '#1a237e',
+            fontFamily: '"Raleway", sans-serif',
+            fontSmoothing: "antialiased",
+            fontSize: "18px",
+            "::placeholder": {
+                color: '#7986cb'
+            }
+        },
+        invalid: {
+            color: '#b71c1c',
+            iconColor: '#d50000'
+        },
+    };
+
+    var cardElement = elements.create('card', {style});
+    cardElement.mount('#card-element');
+
+    var form = document.getElementById('payment-form');
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        console.log(cardElement)
+        stripe.createPaymentMethod({
+            type: 'card',
+            card: cardElement,
+            billing_details: {
+                name: 'Phillip Marlowe'
+            },
+        }).then(stripePaymentMethodHandler);
+    })
+})
+</script>
+{% endblock script %}

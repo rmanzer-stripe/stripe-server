@@ -1,6 +1,7 @@
 version: "3.4"
 services:
   stripe:
+    restart: always
     build:
       context: .
     ports:
@@ -12,6 +13,7 @@ services:
   
   postgres:
     image: postgres:latest
+    restart: always
     env_file: .env
     volumes:
       - pg_data:/var/lib/postgresql/data

@@ -2,12 +2,38 @@
 
 {% block body %}
 <nav class="manzer-nav ">
-<a href="/" class="my-header">Supermanzer Shopping</a>
+    <a href="/" class="my-header">
+        Supermanzer Shopping
+    </a>
+    <ul class="nav-list right hide-on-med-and-down">
+        <li>
+            <a href="{% url 'payments:dispute-list' %}">Disputes</a>
+        </li>
+    </ul>
 </nav>
 <main>
+    {% if messages %}
+    <div class="row">
+        <div class="col s6 offset-s3">
+            {% for message in messages %}
+            <div class="alert alert-{{message.tags}}">
+                <h5>{{message}}</h5>
+            </div>
+        {% endfor %}
+        </div>
+    </div>
+        
+    
+    {% endif %}
+
     {% block main %}
         <h1>Stuff Goes Here </h1>
     {% endblock main %}
+
+    <div id="modal-1" class="modal">
+        <div class="modal-content" id="modal-content"></div>
+        <div class="modal-footer"><a href="" class="modal-close waves-effect waves-purple btn-flat">Okay</a></div>
+    </div>
 </main>
 {% endblock body %}
 

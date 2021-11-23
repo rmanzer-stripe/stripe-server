@@ -5,12 +5,34 @@ Boooooo!!!
 {% endblock title %}
 
 {% block main %}
-<section class="hero is-fullheight-with-navbar is-warning">
-    <div class="hero-body">
-        <div>
-            <p class="title">Your payment was cancelled</p>
-            <p class="subtitle">This makes us very sad, like you punched a puppy.</p>
+<section class="mt-4">
+    <div class="container">
+        <div class="col s4"></div>
+        <div class="col s4">
+            <div class="card">
+        <div class="card-image">
+            <img 
+            src="https://images.pexels.com/photos/257540/pexels-photo-257540.jpeg?cs=srgb&dl=pexels-pixabay-257540.jpg&fm=jpg" 
+            alt="Puppy"
+            class="responsive-img"
+            height=200
+            >
+            <span class="card-title ">Payment Cancelled</span>
         </div>
+        <div class="card-content">
+            <p class="flow-text">Your payment was cancelled</p>
+            <p class="flow-text">This makes us very sad, like you punched a puppy.  This puppy right here.</p>
+            <p class="flow-text">You monster</p>
+        </div>
+        <div class="card-action center-align">
+            <a href="/" class="btn indigo darken-3 white-text tooltipped" data-tooltip="Go Home">
+                <i class="material-icons">home</i>
+            </a>
+        </div>
+    </div>    
+        </div>
+        <div class="col s4"></div>
     </div>
+    
 </section>
 {% endblock main %}

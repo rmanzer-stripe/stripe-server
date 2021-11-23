@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+Request Button
+{% endblock title %}
+
+{% block main %}
+<div class="container">
+    <div class="row">
+        <div class="col s8 offset-s2">
+            <input type="hidden" id="clientSecret" value="{{client_secret}}">
+            <div id="payment-request-button" class="card">
+                <!-- Stripe Element inserted here -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main %}
+
+{% block script %}
+<script src="{% static "js/request_btn.js" %}"></script>
+{% endblock script %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}
+Payment Intents - List
+{% endblock title %}
+
+{% block main %}
+<div class="container">
+    <div class="row">
+        <div class="col s8 offest-s2">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Intent</th>
+                        <th>Status</th>
+                        <th>Amount</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for intent in intents %}
+                        <tr>
+                            <td>
+                                <a href="https://dashboard.stripe.com/test/payments/{{intent.id}}">
+                                    {{intent.id}}
+                                </a>
+                            </td>
+                            <td>
+                                {{intent.status}}
+                            </td>
+                            <td>
+                                {{intent.amount}}
+                            </td>
+                            <td>
+                                <form action="" method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="intent_id" value="{{intent.id}}">
+                                    <p>
+                                        <label for="nothing_{{intent.id}}">
+                                            <input type="radio" name="action" id="nothing_{{intent.id}}" checked value="nothing">
+                                            <span>Nothing</span>
+                                        </label>
+                                    </p>
+                                    <p>
+                                        <label for="refund_{{intent.id}}">
+                                            <input type="radio" name="action" id="refund_{{intent.id}}" value="refund">
+                                            <span>Refund</span>
+                                        </label>
+                                    </p>
+                                    <p>
+                                        <label for="cancel_{{intent.id}}">
+                                            <input type="radio" name="action" id="cancel_{{intent.id}}" value="cancel"> 
+                                            <span>Cancel</span>
+                                        </label>
+                                    </p>
+                                    <label for="amount_{{intent.id}}">Amounts</label>
+                                    <input type="number" name="amount" id="amount_{{intent.id}}">
+                                    <button type="submit" class="btn btn-flat waves-effect waves-indigo">Submit</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock main %}

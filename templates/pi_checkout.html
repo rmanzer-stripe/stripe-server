@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}
+Buy This Thing!
+{% endblock title %}
+
+{% block main %}
+<div class="container mt-4">
+    <div class="col s4"></div>
+    <div class="col s4">
+        <div class="card mt-4">
+            <div class="card-image">
+            <img src="https://images.pexels.com/photos/7130560/pexels-photo-7130560.jpeg?cs=srgb&dl=pexels-gradienta-7130560.jpg&fm=jpg" alt="">
+                <span class="card-title black-text ">Payment Intent for Stuff</span>
+            </div>
+            <div class="card-content">
+                <form action="" id="payment-form" data-secret="{{client_secret}}">
+                    <div id="card-element">
+                        <!-- Elements to create inputs here-->
+                    </div>
+                    <div id="card-errors" class="mt-2 alert" role="alert">
+                        <!-- Errors loaded here-->
+                    </di>
+                </form>
+            </div>
+            <div class="card-action center-align">
+                <button type="submit" id="submitBtn" class="btn indigo darken-3" form="payment-form" >
+                    Submit Payment
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="col s4"></div>
+</div>
+{% endblock main %}
+
+{% block script %}
+<script>
+fetch(appUrls.config).then(result => result.json()).then(data => {
+        stripe = Stripe(data.publicKey)
+    }).then(() => {
+        var elements = stripe.elements(appearance);
+        var style = {
+            base: {
+                color: '#6f86d6',
+            }
+        };
+        var card = elements.create("card", {style});
+        card.mount('#card-element')
+
+        card.on('change', ({error}) => {
+            let displayError = document.getElementById('card-errors');
+            if (error) {
+                displayError.textContent = error.message;
+            } else {
+                displayError.textContent = '';
+            }
+            });
+            var form = document.getElementById('payment-form');
+
+        form.addEventListener('submit', (ev) => {
+            ev.preventDefault();
+            const b = document.getElementById('submitBtn')
+            b.setAttribute('diasbled', '')
+            b.innerHTML = preloader
+            const el = document.getElementById('card-errors')
+            const clientSecret = form.dataset.secret;
+            stripe.confirmCardPayment(clientSecret, {
+                payment_method: {
+                    card: card,
+                    billing_details: {
+                        name: 'Jenny Rosen'
+                    }
+                }
+            }).then((result) => {
+                document.getElementById('submitBtn').innerHTML = "Submit Payment"
+                if (result.error) {
+                    el.classList.add('red', 'lighten-4', 'red-text', 'text-darken-4')
+                    el.innerHTML = result.error.message
+                } else {
+                    console.log(result)
+                    el.innerHTML = result.paymentIntent.id
+                    if (result.paymentIntent.status === 'succeeded') {
+                        M.toast({html: '<span class="green-text text-darken-2>Payment Succeeded!</span>"'})
+                    }
+                    window.location.reload()
+                }
+            })
+        })
+    })
+
+</script>
+{% endblock script %}

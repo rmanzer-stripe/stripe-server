@@ -1,15 +1,83 @@
+html {
+  height: 100%;
+}
+
+body {
+  height: 100%;
+}
+
+main {
+  height: 100%;
+  margin-top: 4em;
+}
+
 .manzer-nav {
   background-image: url("https://images.pexels.com/photos/370799/pexels-photo-370799.jpeg?cs=srgb&dl=pexels-dana-tentis-370799.jpg&fm=jpg");
   background-position: center;
   background-size: cover;
   box-shadow: 2px 4px #9a9a9a;
   border-radius: 4px;
-  text-align: center;
+  text-align: left;
+  height: 4rem;
 }
 
 .my-header {
-  line-height: 2.5;
+  line-height: 2;
   color: rgba(255, 255, 255, 0.75);
   font-size: xx-large;
   font-weight: 800;
+  margin-left: 2em;
+}
+
+.fh {
+  height: 100%;
+}
+
+.mt-1 {
+  margin-top: 1em;
+}
+
+.mt-2 {
+  margin-top: 2em;
+}
+
+.mt-3 {
+  margin-top: 3em;
+}
+
+.mt-4 {
+  margin-top: 4em;
+}
+
+.pt-1 {
+  padding-top: 1em;
+}
+
+.gd-looncrest {
+  background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.15) 0%,
+      rgba(0, 0, 0, 0.15) 100%
+    ),
+    radial-gradient(
+        at top center,
+        rgba(255, 255, 255, 0.4) 0%,
+        rgba(0, 0, 0, 0.4) 120%
+      )
+      #989898;
+  background-blend-mode: multiply, multiply;
+  min-height: 10em;
+}
+
+.alert {
+  border-radius: 10px;
+  padding: 3em;
+}
+#error-message {
+  border-radius: 8px;
+  padding: 2em;
+  background-color: #ffcdd2;
+  color: #b71c1c;
+  box-shadow: 2px 4px #ffebee;
+  margin: 1.5em;
 }

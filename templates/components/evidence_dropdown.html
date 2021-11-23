@@ -1,0 +1,13 @@
+
+
+<!-- Dropdown Trigger -->
+<a href="#" class="dropdown-trigger btn-flat waves-effect waves-template" data-target="evidence-list-{{dispute.id}}">
+    Evidence
+</a>
+
+<ul id="evidence-list-{{dispute.id}}" class="dropdown-content">
+        <li>Due Date: {{dispute.evidence_details.due_by}}</li>
+        <li>Has Evidence? {{dispute.evidence_details.has_evidence}}</li>
+        <li>Past Due: {{dispute.evidence_details.past_due}}</li>
+        <li>Submission Count: {{dispute.evidence_details.submission_count}}</li>
+</ul>

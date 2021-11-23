@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+
+{% block main %}
+
+<!-- TODO: Add template for viewing disputed charges here -->
+<table>
+    <thead>
+        <tr>
+            <th>Dispute</th>
+            <th>Status</th>
+            <th>Evidence</th>
+            <th>Amount</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for dispute in disputes %}
+            <tr>
+                <td>{{dispute.id}}</td>
+                <td>{{dispute.status}}</td>
+                <td>
+                    {% include "components/evidence_dropdown.html" %}
+                </td>
+                <td>{{dispute.amount}}</td>
+                <td>
+                    <a 
+                      href="{% url 'payments:provide-evidence' dispute.id%}" 
+                      class="btn blue darken-2 white-text">
+                      Submit Evidence
+                    </a>
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock main %}

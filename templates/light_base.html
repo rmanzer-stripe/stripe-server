@@ -5,7 +5,13 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+    <!-- Compiled and minified CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+
+    <!-- Compiled and minified JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <link rel="stylesheet" href="{% static 'css/index.css' %}" >  
     {% block head %} {% endblock head %}
     <title>{% block title %}Stripe Integration{% endblock title %}</title>
@@ -13,6 +19,9 @@
   </head>
   <body>
     {% block body %} {% endblock body %} 
+    <script>
+      M.AutoInit()
+    </script>
     <script src="{% static 'js/main.js' %}"></script>
     {% block script %} {% endblock script %}
     

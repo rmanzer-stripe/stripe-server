@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}
+Get Some Money!
+{% endblock title %}
+
+{% block main %}
+<div class="container">
+    <h1>Capture Held Payments</h1>
+    <div class="divider"></div>
+    <table>
+        <thead>
+            <tr>
+                <th>Intent</th>
+                <th>Amount</th>
+                <th>Customer</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pi in intents %}
+            <tr>
+                <td>{{pi.id}}</td>
+                <td>{{pi.amount}}</td>
+                <td>{{pi.charges.data.billing_details.name}}</td>
+                <td>
+                    <form action="" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="id" value="{{pi.id}}">
+                        <div class="switch">
+                            <label>
+                                Cancel
+                                <input type="checkbox" name="capture" id="">
+                                <span class="lever"></span>
+                                Capture
+                            </label>
+                        </div>
+                        <i class="material-icons prefix">attach_money</i>
+                        <input type="number" name="amount_to_capture" id="">
+                        <button type="submit" class="btn indigo darken-2">Capture</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock main %}
