@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load payment_extras %}
+
+{% block title %}
+    Subscriptions etc.
+{% endblock title %}
+
+{% block main %}
+    <div class="container">
+        <div class="row">
+            <div class="col s8 offset-s2">
+                <div class="card">
+                    <div class="card-image">
+                        <img src="https://images.pexels.com/photos/6963030/pexels-photo-6963030.jpeg?cs=srgb&dl=pexels-mikhail-nilov-6963030.jpg&fm=jpg" alt="">
+                        <span class="card-title">Configure Subscription Checkout</span>
+                    </div>
+                    <div class="card-content">
+                        <form action="" method="POST" id="checkout-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" id="action" value="create-subscription">
+                            <div class="row">
+                                <div class="input-field col s10 offset-s1">
+                                    
+                                    <select name="customer" id="customer">
+                                        <option value="">-----------------</option>
+                                        {% for customer in customers %}
+                                            <option value="{{customer.id}}">{{customer.name}}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <label for="customer">Select Customer</label>
+                                </div>
+                                <div class="input-field col s8">
+                                    <select name="price"  id="price">
+                                        {% for price in prices %}
+                                            <option value="{{price.id}}">{{price.unit_amount|stripe_amount:'usd'}}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <label for="price">Select Price</label>
+                                </div>
+                                <div class="input-field col s4">
+                                    <p>Trial Period?</p>
+                                    <div class="switch">
+                                        <label>
+                                            Off
+                                            <input type="checkbox" name="trial" id="trial">
+                                            <span class="lever"></span>
+                                            On
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-action center-align">
+                        <button type="submit" id="submit" form="checkout-form" class="btn indigo darken-2 waves-effect waves-light">Subscribe</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock main %}

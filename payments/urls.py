@@ -20,7 +20,17 @@ urlpatterns = [
     path('request-btn', views.RequestBtn.as_view(), name='request-btn'),
     path('payment-refund', views.PaymentIntentRefund.as_view(),
          name='payment-refund'),
-
+    path('legacy-payment', views.LegacyElementPage.as_view(),
+         name='legacy-payment'),
+    path('ach', views.ACHCharge.as_view(), name='ach'),
+    path('setup-intent', views.SetupIntent.as_view(), name='setup-intent'),
+    path('subscribe', views.SubscriptionView.as_view(), name='subscribe'),
+    path('manage-billing', views.ManageSubscriptions.as_view(), name='manage-sub'),
+    path('checkout-link', views.CheckoutLink.as_view(), name='checkout-link'),
+    path('invoices', views.InvoiceView.as_view(), name='invoices'),
+    path('checkout-subscribe', views.CheckoutView.as_view(),
+         name='checkout-subscribe'),
+    path('payment-info', views.SubPaymentInfo.as_view(), name='payment-info'),
     # FBVs
     path('config/', views.stripe_config),
     path('create-checkout-session/', views.create_checkout_session),

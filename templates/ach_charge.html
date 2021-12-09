@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+
+{% block title %}
+ACH Charge
+{% endblock title %}
+
+{% block main %}
+<!-- TODO: Build a Form to get the data specified here
+ https://stripe.com/docs/js/tokens_sources/create_token?type=bank_account -->
+<div class="container">
+    <div class="row" style="padding: 1em; border-radius: 8px;" class="gd-looncrest">
+        <div class="col s8 offset-s2">
+            <h2 class="center-align">ACH Payment Authorization</h2>
+            <form action="" id="bank-info" method="POST" class="bank-form">
+                {% csrf_token %}
+                <input type="hidden" name="stripeToken" id="tokenId">
+                <label>
+                    <span>Account Holder's Name</span>
+                    <input name="cardholderName" id="accountName" type="text">
+                </label>
+                <label>
+                    <span>Account Number</span>
+                    <input name="accountNumber" id="accountNumber" type="text">
+                </label>
+                <label>
+                    <span>Routing Number</span>
+                    <input name="routingNumber" id="routingNumber" type="text">
+                </label>
+                <button type="submit" class="flex-button">Pay $50 </button>
+            </form>
+            <div id="card-errors" style="display: none;"></div>
+        </div>
+        {% comment %} <div class="col s3"><button id="test-btn" class="flex-button">Test ACH func</button></div> {% endcomment %}
+    </div>
+</div>
+{% endblock main %}
+
+{% block script %}
+<script src="{% static 'js/ach.js' %}"></script>
+{% endblock script %}

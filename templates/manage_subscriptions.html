@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Manage Subscription
+{% endblock title %}
+
+{% block main %}
+<div class="container">
+    <div class="row">
+        <div class="col s8 offset-s2 center-align">
+            <div class="card">
+                <div class="card-content">
+                    <h2>Manage Subscriptions</h2>
+                    <div class="divider"></div>
+                    <p>
+                        You can use the Stripe customer portal to manage your subscriptions and billing information.
+                    </p>
+                </div>
+                <div class="card-action center-align">
+                    <form action="" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="config_id" value="{{portal_config.id}}">
+                        <button type="submit" class="flex-button">Manage Billing</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main %}

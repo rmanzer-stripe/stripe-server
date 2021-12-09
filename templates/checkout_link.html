@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Checkout Link
+{% endblock title %}
+
+{% block main %}
+<div class="container">
+    <div class="row">
+        <div class="col s8 offset-s2">
+            <div class="card">
+                <div class="card-content">
+                    <h3>Checkout Link</h3>
+                    <p>Use the button below to buy something nifty.  This is entirely client side so it's prone to errors, easily manipulated, and generally a bad idea.  But that doesn't stop people trying!</p>
+                </div>
+                <div class="card-action center-align">
+                    <div class="row">
+                      <div class="col s4">
+                         <!-- Create a button that your customers click to complete their purchase. Customize the styling to suit your branding. -->
+                        <button
+                        style="background-color:#6772E5;color:#FFF;padding:8px 12px;border:0;border-radius:4px;font-size:1em;cursor:pointer"
+                        id="checkout-button-price_1K1g2PIlCeH6bP8Rk4OI7UvU"
+                        role="link"
+                        type="button"
+                        class="flex-button"
+                        >
+                        Coffee Subscription
+                        </button>
+                      </div>
+                      <div class="col s4">
+                         <!-- Create a button that your customers click to complete their purchase. Customize the styling to suit your branding. -->
+                        <button
+                        style="background-color:#6772E5;color:#FFF;padding:8px 12px;border:0;border-radius:4px;font-size:1em;cursor:pointer"
+                        id="checkout-button-price_1JwD9kIlCeH6bP8RWcISmhCT"
+                        role="link"
+                        type="button"
+                        class="flex-button"
+                        >
+                        Buy My Time
+                        </button>
+                      </div>
+                      <div class="col s4">
+                        <!-- Create a button that your customers click to complete their purchase. Customize the styling to suit your branding. -->
+                        <button
+                          style="background-color:#6772E5;color:#FFF;padding:8px 12px;border:0;border-radius:4px;font-size:1em;cursor:pointer"
+                          id="checkout-button-price_1K2IjOIlCeH6bP8Rgstmmcfy"
+                          role="link"
+                          type="button"
+                          class="flex-button"
+                        >
+                          Donate Coffee
+                        </button>
+
+                      </div>
+                    </div>
+                   
+                   
+                    <div id="error-message" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock main %}
+
+{% block script %}
+<script>
+(function() {
+  var stripe = Stripe('pk_test_51JticYIlCeH6bP8REulC9GlUO09hWuGsCljwJ3VNWhqqLmTTW0CedWXOoABWyXkplmqMtwfA4SiXkdeqCMvesIii00BCpJb9Vb');
+
+  const errHandler = (result) => {
+    var displayError = document.getElementById('error-message');
+    if (result.error) {
+        /*
+         * If `redirectToCheckout` fails due to a browser or network
+         * error, display the localized error message to your customer.
+         */
+        
+        displayError.textContent = result.error.message;
+        displayError.style.display="block";
+      } else {
+        displayError.style.display = 'none';
+      }
+  }
+  var checkoutButton = document.getElementById('checkout-button-price_1K1g2PIlCeH6bP8Rk4OI7UvU');
+  checkoutButton.addEventListener('click', function () {
+    /*
+     * When the customer clicks on the button, redirect
+     * them to Checkout.
+     */
+    stripe.redirectToCheckout({
+      lineItems: [{price: 'price_1K1g2PIlCeH6bP8Rk4OI7UvU', quantity: 1}],
+      mode: 'subscription',
+      /*
+       * Do not rely on the redirect to the successUrl for fulfilling
+       * purchases, customers may not always reach the success_url after
+       * a successful payment.
+       * Instead use one of the strategies described in
+       * https://stripe.com/docs/payments/checkout/fulfill-orders
+       */
+      successUrl: 'https://supermanzer.github.io/success',
+      cancelUrl: 'https://supermanzer.github.io/canceled',
+    })
+    .then(function (result) {
+     errHanlder(result)
+    });
+  });
+  var checkoutButton = document.getElementById('checkout-button-price_1JwD9kIlCeH6bP8RWcISmhCT');
+  checkoutButton.addEventListener('click', function () {
+    /*
+     * When the customer clicks on the button, redirect
+     * them to Checkout.
+     */
+    stripe.redirectToCheckout({
+      lineItems: [{price: 'price_1JwD9kIlCeH6bP8RWcISmhCT', quantity: 1}],
+      mode: 'payment',
+      /*
+       * Do not rely on the redirect to the successUrl for fulfilling
+       * purchases, customers may not always reach the success_url after
+       * a successful payment.
+       * Instead use one of the strategies described in
+       * https://stripe.com/docs/payments/checkout/fulfill-orders
+       */
+      successUrl: 'https://supermanzer.github.io/success',
+      cancelUrl: 'https://supermanzer.github.io/canceled',
+    })
+    .then(function (result) {
+      errHandler(result)
+    });
+  });
+
+  var checkoutButton = document.getElementById('checkout-button-price_1K2IjOIlCeH6bP8Rgstmmcfy');
+  checkoutButton.addEventListener('click', function () {
+    /*
+     * When the customer clicks on the button, redirect
+     * them to Checkout.
+     */
+    stripe.redirectToCheckout({
+      lineItems: [{price: 'price_1K2IjOIlCeH6bP8Rgstmmcfy', quantity: 1}],
+      mode: 'payment',
+      /*
+       * Do not rely on the redirect to the successUrl for fulfilling
+       * purchases, customers may not always reach the success_url after
+       * a successful payment.
+       * Instead use one of the strategies described in
+       * https://stripe.com/docs/payments/checkout/fulfill-orders
+       */
+      successUrl: 'https://supermanzer.github.io/success',
+      cancelUrl: 'https://supermanzer.github.io/canceled',
+      submitType: 'donate'
+    })
+    .then(function (result) {
+      errHanlder(result)
+    });
+  });
+})();
+</script>
+
+{% endblock script %}

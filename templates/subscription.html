@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+    Subscribe to Awesomeness!
+{% endblock title %}
+
+{% block main %}
+<div class="container">
+    <div class="row">
+        <div class="col s8 offset-s2">
+            <div class="card">
+                <div class="card-image">
+                    <img src="" alt="">
+                </div>
+                <div class="card-content">
+                    <h2>Subscribe Below</h2>
+                    <p>Get ready for regular deliveries of face melting awesomeness</p>
+                </div>
+                <div class="card-action">
+                    <form action="" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" id="priceId" name="price_id" value="{{subscription_item.price}}">
+                        <button type="submit" class="flex-button">Subscribe</button>
+                        
+                    </form>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <div class="card">
+                <div class="card-image"><span class="card-title"></span></div>
+                <div class="card-content">
+                    <h2>Manage Billing & Subscriptions</h2>
+                    <p>If you need to manage your subscriptions & billing, click below</p>
+                </div>
+                <div class="card-content center-align">
+                    <a href="{% url 'payments:manage-sub' %}" class="btn info" style="display: flex; flex-direction: row">Manage</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main %}

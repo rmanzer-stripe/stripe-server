@@ -39,6 +39,7 @@ Buy This Thing!
 fetch(appUrls.config).then(result => result.json()).then(data => {
         stripe = Stripe(data.publicKey)
     }).then(() => {
+        const appearance = {theme: 'night', labels: 'floating'}
         var elements = stripe.elements(appearance);
         var style = {
             base: {

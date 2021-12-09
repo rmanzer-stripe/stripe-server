@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+Legacy Element
+{% endblock title %}
+
+{% block main %}
+<div class="container">
+    <div class="row">
+        <div class="col s8 offset-s2">
+        
+            <form action="" method="POST" id="paymentForm" class="bg-grey">
+                <h3>Legacy Card Element Form</h3>
+                {% csrf_token %}
+                <div class="input-group">
+                    <label>
+                        <span>Name</span>
+                        <input type="text" id='cardholderName' name="cardholderName" class="field" placeholder="Enter cardholder name">
+                    </label>
+                </div>
+                <div class="input-group">
+                    <label>
+                        <span>Street 1</span>
+                        <input type="text" id='address_line1' name="addres_line1" class="field" placeholder="123 Example St">
+                    </label>
+                </div>
+                <div class="input-group">
+                    <label>
+                        <span>Name</span>
+                        <input type="text" id='address_line2' name="address_line2" class="field" placeholder="#13">
+                    </label>
+                </div>
+                <div class="input-group">
+                    <label>
+                        <span>Name</span>
+                        <input type="text" id='address_city' name="address_city" class="field" placeholder="Flavor Town">
+                    </label>
+                </div>
+                <div class="input-group">
+                    <label>
+                        <span>Name</span>
+                        <input type="text" id='address_state' name="address_state" class="field" placeholder="CA">
+                    </label>
+                </div>
+                <div class="input-group">
+                    <label>
+                        <span>Name</span>
+                        <input type="text" id='address_zip' name="addres_zip" class="field" placeholder="95448">
+                    </label>
+                </div>
+                <div class="input-group">
+                    <label>
+                        <span>Card</span>
+                        <div id="payment-card"  class="field"></div>
+                    </label>
+                </div>
+                <input type="hidden" name="stripeToken" id="stripeToken">
+                <button type="submit" class="flex-button">Pay $20 </button>
+                <div id="card-errors" >
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock main %}
+
+{% block script %}
+    <script src="{% static 'js/legacy.js' %}"></script>
+{% endblock script %}

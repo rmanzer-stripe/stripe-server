@@ -15,7 +15,7 @@ def stripe_amount(value, currency):
     }
 
     value = value * currencies.get(currency, {}).get('transform', 1)
-    format_str = '{:.' + currencies.get(currency, {}).get('dec', 0) + 'f}'
+    format_str = '{:.' + str(currencies.get(currency, {}).get('dec', 0)) + 'f}'
     format_val = format_str.format(value)
 
     prefix = currencies.get(currency, {}).get('prefix', '')
