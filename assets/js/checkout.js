@@ -10,18 +10,19 @@ const options = {
 fetch('/config/').then(response => response.json()).then((data) => {
     var stripe = Stripe(data.publicKey)
     const elements = stripe.elements(options)
-
-    const paymentElement = elements.create('payment');
+    const payOptions = {fields: { billingDetails: {email: 'never'}}}
+    const paymentElement = elements.create('payment', payOptions);
     paymentElement.mount('#payment-element');
 
 
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
-
+        const email = '';
         const {error} = await stripe.confirmPayment({
             elements,
             confirmParams: {
                 return_url: 'http://localhost:8000/success',
+                payment_method_data: { billing_details: { email } }
             },
         });
 

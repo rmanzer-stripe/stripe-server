@@ -1,24 +1,41 @@
 {% extends "base.html" %}
-
+{% load static %}
 {% block title %}
     Thanks!
 {% endblock title %}
 
 {% block main %}
 <section class="valign-wrapper ">
-    <div class="card">
-        <div class="card-image">
-            <image src="https://images.pexels.com/photos/40663/fireworks-rocket-new-year-s-day-new-year-s-eve-40663.jpeg?cs=srgb&dl=pexels-pixabay-40663.jpg&fm=jpg"></image>
-            <span class="card-title">Thanks!</span>
-        </div>
-        <div class="card-content">
-            <p>We really like it when you buy stuff.  It makes us happy</p>
-        </div>
-        <div class="card-action center-align">
-            <a href="/" class="btn indigo darken-3 tooltipped" data-tooltip="Go Home">
-                <i class="material-icons">home</i>
-            </a>
+    <div class="container">
+        <div class="row">
+            <div class="col s8 offset-s2">
+                <div class="card">
+                    <div class="card-image">
+                        <image 
+                        src="https://images.pexels.com/photos/40663/fireworks-rocket-new-year-s-day-new-year-s-eve-40663.jpeg?cs=srgb&dl=pexels-pixabay-40663.jpg&fm=jpg"
+                        height=300
+                        ></image>
+                        <span class="card-title">Thanks!</span>
+                    </div>
+                    <div class="card-content">
+                        <h3>Payment/Subscription Status</h3>
+                        <div class="alert" id="status-alert">
+                            <p id="message"></p>
+                        </div>
+                    </div>
+                    <div class="card-action center-align">
+                        <a href="/" class="btn indigo darken-3 tooltipped" data-tooltip="Go Home">
+                            <i class="material-icons">home</i>
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+    
 </section>
 {% endblock main %}
+
+{% block script %}
+<script src="{% static 'js/status.js' %}"></script>
+{% endblock script %}

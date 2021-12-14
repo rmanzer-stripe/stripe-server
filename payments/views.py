@@ -268,7 +268,7 @@ class UPE(generic.TemplateView):
         intent = stripe.PaymentIntent.create(
             amount=14000,
             currency="usd",
-            automatic_payment_methods={'enabled': True}
+            payment_method_types=['card', ],
         )
         context['client_secret'] = intent.client_secret
         return context
@@ -591,24 +591,24 @@ class CheckoutView(generic.TemplateView):
 
     def post(self, request, *args, **kwargs):
         stripe.api_key = settings.STRIPE_SECRET_KEY
-        host = get_host(request)
         try:
-            sub_kwargs = {
-                'customer': request.POST['customer'],
-                'items': [{
-                    'price': request.POST['price']
-                }],
-                'payment_behavior': 'default_incomplete',
-                'expand': ['latest_invoice.payment_intent'],
-            }
-            subscription = stripe.Subscription.create(**sub_kwargs)
-            response = HttpResponseRedirect(
-                reverse_lazy('payments:payment-info'),
-                headers={'subscription-id': subscription.id,
-                         'client-secret': subscription.latest_invoice.payment_intent.client_secret},
-            )
-            logger.info(response.headers)
-            return response
+            if request.POST.get('action') and request.POST['action'] == 'create-subscription':
+                sub_kwargs = {
+                    'customer': request.POST['customer'],
+                    'items': [{
+                        'price': request.POST['price']
+                    }],
+                    # 'payment_behavior': 'default_incomplete',
+                    'payment_behavior': 'allow_incomplete',
+                    'expand': ['latest_invoice.payment_intent'],
+                }
+                subscription = stripe.Subscription.create(**sub_kwargs)
+                return JsonResponse(
+                    {
+                        'subscription_id': subscription.id,
+                        'client_secret': subscription.latest_invoice.payment_intent.client_secret
+                    }
+                )
         except Exception as e:
             raise Exception(e)
 
@@ -770,6 +770,20 @@ def webhook2(request):
         #     invoice=invoice['id']
         # )
         # logger.info(f'InvoiceItem added to newly created invoice: {item}')
+
+    elif etype == "invoice.payment_succeeded":
+        data_object = event['data']['object']
+        if data_object['billing_reason'] == 'subscription_create':
+            subscription_id = data_object['subscription']
+            payment_intent_id = data_object['payment_intent']
+
+            payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+
+            stripe.Subscription.modify(
+                subscription_id,
+                default_payment_method=payment_intent.payment_method
+            )
+
     elif etype.startswith('invoice.') and etype != "invoice.created":
         invoice = event['data']['object']
         status = invoice["status"]

@@ -100,3 +100,19 @@ const messageModal = (message, heading='') => {
     content.innerHTML = contentText;
     M.Modal.getInstance(modal).open();
 }
+
+/**
+ * Generalized error handler
+ * @param {String} message Error message to display to user
+ */
+const errorMessageHandler = (message='') => {
+    const errDiv = document.getElementById('error-message');
+    if (errDiv) {
+        errDiv.textContent = message;
+        if (message.length > 0) {
+            errDiv.style.display = 'block'
+        } else {
+            errDiv.style.display = 'none';
+        }
+    }
+}

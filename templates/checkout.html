@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load payment_extras %}
+{% load payment_extras static %}
 
 {% block title %}
     Subscriptions etc.
@@ -15,6 +15,19 @@
                         <span class="card-title">Configure Subscription Checkout</span>
                     </div>
                     <div class="card-content">
+                        <div class="row">
+                            <div class="col s6 offset-s3">
+                                <form id="element-type" action="">
+                                    <div class="input-field col s12">
+                                        <select name="element-choice" id="element-choice">
+                                            <option value="payment-form">Payment Element</option>
+                                            <option value="card-form">Card Element</option>
+                                        </select>
+                                        <label>Select Element</label>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                         <form action="" method="POST" id="checkout-form">
                             {% csrf_token %}
                             <input type="hidden" name="action" id="action" value="create-subscription">
@@ -50,12 +63,29 @@
                                 </div>
                             </div>
                         </form>
+                        <form action="" method="POST" id="payment-form" style="display: none;">
+                            <h3>Provide Payment Information</h3>
+                            <div id="payment-element">
+                                <!--Element creates interface that goes here. -->
+                            </div>
+                        </form>
+                        <form action="" method="POST" id="card-form" style="display: none;">
+                            <h3>Provide Card Information</h3>
+                            <div id="card-element">
+                                <!-- Card element loaded here -->
+                            </div>
+                        </form>
                     </div>
                     <div class="card-action center-align">
-                        <button type="submit" id="submit" form="checkout-form" class="btn indigo darken-2 waves-effect waves-light">Subscribe</button>
+                        <button type="submit" id="submit" form="checkout-form" class="btn indigo darken-2 waves-effect waves-light">Register Subscription</button>
                     </div>
+                    <div id="error-message" style="display:none;"></div>
                 </div>
             </div>
         </div>
     </div>
 {% endblock main %}
+
+{% block script %}
+    <script src="{% static 'js/subscribe.js' %}"></script>
+{% endblock script %}

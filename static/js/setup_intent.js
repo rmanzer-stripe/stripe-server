@@ -18,7 +18,7 @@ const errMessageHandler = (error) => {
 
 stripeInit().then(() => {
     const options = {
-        clientSecet : document.getElementById('client-secret').value,
+        clientSecret : document.getElementById('client-secret').value,
         appearance: {
             theme: 'night',
             labels: 'floating'
@@ -29,14 +29,14 @@ stripeInit().then(() => {
 
     const paymentElement = elements.create('payment');
     paymentElement.mount('#payment-element')
-    const form = document.getElementById('payment-form')
+    const form = document.getElementById('setup-form')
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
         const { error }= await stripe.confirmSetup({
             elements,
             confirmParams: {
-                return_url: form.dataset.return-url
+                return_url: window.location.href
             }
         })
         errMessageHandler(error)

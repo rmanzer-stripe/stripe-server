@@ -28,8 +28,7 @@ const makeElements = (formId) => {
     showHideForm(formId);
     const useCard = formId.includes('card')
     const elementToCreate = useCard ? 'card' : 'payment'
-    const options = useCard ? null : {clientSecret};
-    const elements = stripe.elements(options);
+    const elements = stripe.elements({clientSecret})
     const myElement = elements.create(elementToCreate)
     myElement.mount(`#${elementToCreate}-element`)
     const retunrVal = useCard ? myElement : elements
@@ -38,19 +37,14 @@ const makeElements = (formId) => {
 
 const handlePayment = (formToShow) => {
     const elements = makeElements(formToShow);
-    document.querySelector(formToShow).addEventListener('submit', async (ev) =>{
+    document.querySelector(formToShow).addEventListener('sumibt', async (ev) =>{
         ev.preventDefault();
-        const {error} = await stripe.confirmPayment({
+        return await stripe.confirmPayment({
             elements,
             confirmParams: {
                 return_url: window.location.origin + "/success/",
             }
         })
-        if (error) {
-            errorMessageHandler(error.message)
-        } else {
-            errorMessageHandler('')
-        }
     });
 }
 
@@ -65,7 +59,7 @@ const handleCard = (formToShow) => {
     });
     document.querySelector(formToShow).addEventListener('submit', async (ev) => {
         ev.preventDefault();
-        const {error} = await stripe.confirmCardPayment(clientSecret, {
+        return await stripe.confirmCardPayment(clientSecret, {
             payment_method: {
                 card: elements,
                 billing_details: {
@@ -73,11 +67,6 @@ const handleCard = (formToShow) => {
                 }
             }
         })
-        if (error) {
-            errorMessageHandler(error.message)
-        } else {
-            errorMessageHandler('')
-        }
     })
 }
 
@@ -96,8 +85,13 @@ const paymentInit = (data) => {
         // paymentElement.mount('#payment-element');
         
         const confirmFunction = formToShow.includes('card') ? handleCard : handlePayment
-        const resp = confirmFunction(formToShow)
-        console.log(resp);
+        const {error} = confirmFunction(formToShow)
+        
+        if (error) {
+            errorMessageHandler(error.message)
+        } else {
+            errorMessageHandler('')
+        }
     })
 }
 
