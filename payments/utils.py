@@ -6,7 +6,7 @@ from logging import getLogger
 logger = getLogger(__name__)
 
 
-def attach_payment() -> None:
+def attach_payment():
     """
     Create and attach payment method to customer
     """
@@ -30,3 +30,15 @@ def attach_payment() -> None:
         )
     except Exception as e:
         logger.error(str(e))
+
+
+def rm_subscriptions():
+    """
+    Remove incomplete subscriptions
+    """
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    [
+        stripe.Subscription.cancel(s['id'])
+        for s in stripe.Subscription.list(
+            status='incomplete', limit=100)['data']
+    ]

@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+    Old Subscription
+{% endblock title %}
+
+{% block main %}
+    <div class="container">
+        <div class="row">
+            <div class="col s10 offset-s1">
+                <div class="card">
+                    <div class="card-image">
+                        <img src="https://images.pexels.com/photos/95425/pexels-photo-95425.jpeg?cs=srgb&dl=pexels-erik-scheel-95425.jpg&fm=jpg" alt="">
+                        <span class="card-title">Customers, Prices & Subscriptions</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="row">
+                        <form action="" id="customer" method="POST">
+                            {% csrf_token %}
+                            <div class="input-field col s10 offset-s1">
+                                <input type="email" name="email" id="email" class="validate" placeholder="Any valid email">
+                                <label for="email">Email</label>
+                                <span class="helper-text" data-error="Invalid email address" data-success="Thanks!"></span>
+                            </div>
+                        </form>
+                        </div>
+                        <input type="hidden" id="customerId" value="">
+                        <div class="row">
+                            <form action="" id="payment-form" style="display: none;">
+                                <div class="row">
+                                    <div class="col s6 center-align">
+                                        <label class="card-radio" for="basic">
+                                            <input type="radio" name="price" id="basic" value="price_1K1g2PIlCeH6bP8R8oZXjHzo">
+                                            <div class="card" id='basic-card'>
+                                                <div class="card-image">
+                                                    <img src="https://images.pexels.com/photos/539432/pexels-photo-539432.jpeg?cs=srgb&dl=pexels-foodie-factor-539432.jpg&fm=jpg" alt="">
+                                                    <span class="card-title">Basic Coffee Consulting</span>
+                                                </div>
+                                                <div class="card-content">
+                                                    <h4>$3.14/Month</h4>
+                                                    <h5>Basic Coffee Consulting</h5>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <div class="col s6 center-align">
+                                        <label class='card-radio' for="premium">
+                                            <input type="radio" name="price" id="premium" value="price_1K1g2PIlCeH6bP8Rk4OI7UvU">
+                                            <div class="card" id="premium-card">
+                                                <div class="card-image">
+                                                    <img src="https://images.pexels.com/photos/302899/pexels-photo-302899.jpeg?cs=srgb&dl=pexels-chevanon-photography-302899.jpg&fm=jpg" alt="">
+                                                    <span class="card-title">Premium Coffee Consulting</span>
+                                                </div>
+                                                <div class="card-content">
+                                                    <h4>$31.41/Month</h4>
+                                                    <h5>Premium Coffee Consulting</h5>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="input-field col s10 offset-s1">
+                                        <input type="text" id="full-name" >
+                                        <label for="full-name">Full Name</label> 
+                                        <span class="help-text">Enter name as it appears on card</span>
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col s8 offset-s2">
+                                        <div id="card-element"></div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="row" id="error-message" style="display:none;"></div>
+                    </div>
+                    <div class="card-action center-align">
+                        <button type="submit" class="flex-button" form="customer" id="submit-btn">Submit Email</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock main %}
+
+{% block script %}
+    <script src="{% static 'js/old_subscription.js' %}" ></script>
+{% endblock script %}

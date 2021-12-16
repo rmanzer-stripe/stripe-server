@@ -153,3 +153,8 @@ button.flex-button:hover {
 button.flext-button:active {
   background: #01579b;
 }
+
+div.card.active {
+  border: #0797eb 4px solid;
+  box-shadow: rgb(38, 57, 77) 0px 20px 30px -10px;
+}

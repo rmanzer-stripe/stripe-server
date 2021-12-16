@@ -31,6 +31,12 @@ urlpatterns = [
     path('checkout-subscribe', views.CheckoutView.as_view(),
          name='checkout-subscribe'),
     path('payment-info', views.SubPaymentInfo.as_view(), name='payment-info'),
+    path('old-subscription', views.OldSubscriptionView.as_view(),
+         name='old-subscription'),
+    path('create-customer', views.OldSubscriptionView.as_view(),
+         name='create-customer'),
+    path('create-subscription', views.OldSubscriptionView.as_view(),
+         name='create-subscription'),
     # FBVs
     path('config/', views.stripe_config),
     path('create-checkout-session/', views.create_checkout_session),

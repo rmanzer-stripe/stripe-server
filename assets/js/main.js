@@ -43,6 +43,25 @@ if (el) {
     })    
 }
 
+const showHideForm = (id) => {
+    const formToShow = document.querySelector(id);
+    const formsToHide = document.querySelectorAll(`form:not(${id})`)
+    const btn = document.querySelector('button')
+    btn.setAttribute('form', id.slice(1))
+    if (id.includes('payment')){
+        btn.textContent = 'Provide Payment Info'
+    } else if (id.includes('card')){
+        btn.textContent = 'Provide Card Info'
+    }  else if (id.includes('customer')){
+        btn.textContent = 'Enter Customer Info'
+    }
+    else {
+        btn.textContent = 'Register Subscription'
+    }
+    formsToHide.forEach(f => f.style.display = 'none');
+    formToShow.style.display = 'block';
+}
+
 function stripePaymentMethodHandler(result) {
     var token = document.querySelector('input[name=csrfmiddlewaretoken]').value
     const el = document.getElementById('card-errors');

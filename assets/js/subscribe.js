@@ -1,27 +1,20 @@
 
 var clientSecret = ''
 
-const showHideForm = (id) => {
-    const formToShow = document.querySelector(id);
-    const formsToHide = document.querySelectorAll(`form:not(${id})`)
-    const btn = document.querySelector('button')
-    btn.setAttribute('form', id.slice(1))
-    if (id.includes('payment')){
-        btn.textContent = 'Provide Payment Info'
-    } else if (id.includes('card')){
-        btn.textContent = 'Provide Card Info'
-    } 
-    else {
-        btn.textContent = 'Register Subscription'
-    }
-    formsToHide.forEach(f => f.style.display = 'none');
-    formToShow.style.display = 'block';
-}
+
 
 const getForm = () => {
     const id = document.getElementById('element-choice').value
     const response = `#${id}`
     return response
+}
+const getCustomer = () => {
+    const custId = document.getElementById('customer').value;
+    let name = null
+    if (custId) {
+        name = document.querySelector(`option[value=${custId}]`).textContent
+    }
+    return {id: custId, name}
 }
 
 const makeElements = (formId) => {
@@ -65,13 +58,15 @@ const handleCard = (formToShow) => {
     });
     document.querySelector(formToShow).addEventListener('submit', async (ev) => {
         ev.preventDefault();
+        const customer = getCustomer();
         const {error} = await stripe.confirmCardPayment(clientSecret, {
             payment_method: {
                 card: elements,
                 billing_details: {
-                    name: ''
-                }
-            }
+                    name: customer.name
+                },
+            },
+            return_url: window.location.origin + "/success/",
         })
         if (error) {
             errorMessageHandler(error.message)
@@ -96,8 +91,8 @@ const paymentInit = (data) => {
         // paymentElement.mount('#payment-element');
         
         const confirmFunction = formToShow.includes('card') ? handleCard : handlePayment
-        const resp = confirmFunction(formToShow)
-        console.log(resp);
+        confirmFunction(formToShow)
+        
     })
 }
 

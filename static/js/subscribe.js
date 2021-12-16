@@ -1,34 +1,28 @@
 
 var clientSecret = ''
 
-const showHideForm = (id) => {
-    const formToShow = document.querySelector(id);
-    const formsToHide = document.querySelectorAll(`form:not(${id})`)
-    const btn = document.querySelector('button')
-    btn.setAttribute('form', id.slice(1))
-    if (id.includes('payment')){
-        btn.textContent = 'Provide Payment Info'
-    } else if (id.includes('card')){
-        btn.textContent = 'Provide Card Info'
-    } 
-    else {
-        btn.textContent = 'Register Subscription'
-    }
-    formsToHide.forEach(f => f.style.display = 'none');
-    formToShow.style.display = 'block';
-}
+
 
 const getForm = () => {
     const id = document.getElementById('element-choice').value
     const response = `#${id}`
     return response
 }
+const getCustomer = () => {
+    const custId = document.getElementById('customer').value;
+    let name = null
+    if (custId) {
+        name = document.querySelector(`option[value=${custId}]`).textContent
+    }
+    return {id: custId, name}
+}
 
 const makeElements = (formId) => {
     showHideForm(formId);
     const useCard = formId.includes('card')
     const elementToCreate = useCard ? 'card' : 'payment'
-    const elements = stripe.elements({clientSecret})
+    const options = useCard ? null : {clientSecret};
+    const elements = stripe.elements(options);
     const myElement = elements.create(elementToCreate)
     myElement.mount(`#${elementToCreate}-element`)
     const retunrVal = useCard ? myElement : elements
@@ -37,14 +31,19 @@ const makeElements = (formId) => {
 
 const handlePayment = (formToShow) => {
     const elements = makeElements(formToShow);
-    document.querySelector(formToShow).addEventListener('sumibt', async (ev) =>{
+    document.querySelector(formToShow).addEventListener('submit', async (ev) =>{
         ev.preventDefault();
-        return await stripe.confirmPayment({
+        const {error} = await stripe.confirmPayment({
             elements,
             confirmParams: {
                 return_url: window.location.origin + "/success/",
             }
         })
+        if (error) {
+            errorMessageHandler(error.message)
+        } else {
+            errorMessageHandler('')
+        }
     });
 }
 
@@ -59,14 +58,21 @@ const handleCard = (formToShow) => {
     });
     document.querySelector(formToShow).addEventListener('submit', async (ev) => {
         ev.preventDefault();
-        return await stripe.confirmCardPayment(clientSecret, {
+        const customer = getCustomer();
+        const {error} = await stripe.confirmCardPayment(clientSecret, {
             payment_method: {
                 card: elements,
                 billing_details: {
-                    name: ''
-                }
-            }
+                    name: customer.name
+                },
+            },
+            return_url: window.location.origin + "/success/",
         })
+        if (error) {
+            errorMessageHandler(error.message)
+        } else {
+            errorMessageHandler('')
+        }
     })
 }
 
@@ -85,13 +91,8 @@ const paymentInit = (data) => {
         // paymentElement.mount('#payment-element');
         
         const confirmFunction = formToShow.includes('card') ? handleCard : handlePayment
-        const {error} = confirmFunction(formToShow)
+        confirmFunction(formToShow)
         
-        if (error) {
-            errorMessageHandler(error.message)
-        } else {
-            errorMessageHandler('')
-        }
     })
 }
 

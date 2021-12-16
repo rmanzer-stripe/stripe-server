@@ -65,7 +65,7 @@ def get_customer(name='Phillip Marlowe'):
         name (str, optional): Name of a customer. Defaults to 'Phillip Marlowe'.
 
     Returns:
-        [dict]: Customer object as dictionary 
+        [dict]: Customer object as dictionary
     """
     customerRec = models.Customer.objects.filter(
         data__name=name)
@@ -292,6 +292,7 @@ class RequestBtn(generic.TemplateView):
 
 
 class PaymentIntentRefund(generic.TemplateView):
+
     template_name = 'pi_list.html'
 
     def get_context_data(self, **kwargs):
@@ -598,8 +599,8 @@ class CheckoutView(generic.TemplateView):
                     'items': [{
                         'price': request.POST['price']
                     }],
-                    # 'payment_behavior': 'default_incomplete',
-                    'payment_behavior': 'allow_incomplete',
+                    'payment_behavior': 'default_incomplete',
+                    # 'payment_behavior': 'allow_incomplete',
                     'expand': ['latest_invoice.payment_intent'],
                 }
                 subscription = stripe.Subscription.create(**sub_kwargs)
@@ -621,6 +622,31 @@ class SubPaymentInfo(generic.TemplateView):
         logger.info(pprinter(request.META))
         # logger.info(response.__dict__)
         return response
+
+
+class OldSubscriptionView(generic.TemplateView):
+    """
+    Handling subscription processing using a somewhat outdated methd
+    https://stripe.com/docs/billing/subscriptions/fixed-price
+
+    """
+    template_name = 'old_subscription.html'
+
+    def post(self, request, *args, **kwargs):
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        email = request.POST.get('email', False)
+
+        if email:
+            try:
+                customer = stripe.Customer.create(
+                    email=email,
+                    description='Old Subscription Flow'
+                )
+                return JsonResponse(customer)
+            except Exception as e:
+                raise e
+
+
 # ---------------------------------------------------------------------------
 #                       FUNCTION BASED VIEWS
 # https://docs.djangoproject.com/en/3.2/topics/http/views/

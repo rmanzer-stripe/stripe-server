@@ -1,16 +1,8 @@
 {% extends "light_base.html" %}
 
 {% block body %}
-<nav class="manzer-nav ">
-    <a href="/" class="my-header">
-        Supermanzer Shopping
-    </a>
-    <ul class="nav-list right hide-on-med-and-down">
-        <li>
-            <a href="{% url 'payments:dispute-list' %}">Disputes</a>
-        </li>
-    </ul>
-</nav>
+{% include "components/navbar.html" %}
+
 <main>
     {% if messages %}
     <div class="row">
