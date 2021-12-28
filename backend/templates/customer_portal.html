@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+    Customer Portal
+{% endblock title %}
+
+{% block main %}
+<div class="container">
+    <div class="row">
+        <div class="col s10 offset-s1 align-center">
+            <h2 class="align-center indigo-text text-darken-4 my-4 grey lighten-3">
+                Manage Subscriptions and Billing - Bob Ross
+            </h2>
+            <p class="my-4">
+                Use the link below to navigate to your customer portal where you can manage subscriptions, invoices, and billing.
+            </p>
+            <a href="{{portal_session.url}}" class="btn btn-large waves-effect waves-light indigo darken-2 my-4" style="width:100%;">
+                <i class="material-icons">https</i>
+                Secure Customer Portal
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock main %}
+
+{% block script %}
+<script src="{% static 'js/customer_portal.js' %}"></script>
+{% endblock script %}

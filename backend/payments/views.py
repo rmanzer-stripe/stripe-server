@@ -16,13 +16,14 @@ from django.http.response import HttpResponse, HttpResponseRedirect, JsonRespons
 from django.http.request import HttpRequest
 from django.views.decorators.csrf import csrf_exempt
 from django.urls import reverse_lazy
+from stripe.api_resources import account, source_transaction, subscription
 from stripe.api_resources.checkout import session
 
 
 from payments.forms import EvidenceForm
 from payments import models
 
-
+stripe.api_key = settings.STRIPE_SECRET_KEY
 printer = pprint.PrettyPrinter(indent=4)
 pprinter = printer.pprint
 logger = logging.getLogger(__name__)
@@ -220,7 +221,7 @@ class PaymentIntentHold(generic.TemplateView):
                     amount=1099,
                     currency='usd',
                     confirm=True,
-                    confirmation_method='manual',
+                    capture_method='manual',
                 )
             elif 'payment_intent_id' in data:
                 intent = stripe.PaymentIntent.confirm(
@@ -591,7 +592,6 @@ class CheckoutView(generic.TemplateView):
         return context
 
     def post(self, request, *args, **kwargs):
-        stripe.api_key = settings.STRIPE_SECRET_KEY
         try:
             if request.POST.get('action') and request.POST['action'] == 'create-subscription':
                 sub_kwargs = {
@@ -602,6 +602,7 @@ class CheckoutView(generic.TemplateView):
                     'payment_behavior': 'default_incomplete',
                     # 'payment_behavior': 'allow_incomplete',
                     'expand': ['latest_invoice.payment_intent'],
+                    'metadata': {'one': 1, 'true': True}
                 }
                 subscription = stripe.Subscription.create(**sub_kwargs)
                 return JsonResponse(
@@ -633,19 +634,268 @@ class OldSubscriptionView(generic.TemplateView):
     template_name = 'old_subscription.html'
 
     def post(self, request, *args, **kwargs):
-        stripe.api_key = settings.STRIPE_SECRET_KEY
-        email = request.POST.get('email', False)
 
+        data = request.POST
+        email = data.get('email', False)
+        customerId = data.get('customerId', False)
+        invoiceId = data.get('invoiceId', False)
+        subscriptionId = data.get('subscriptionId', False)
         if email:
             try:
-                customer = stripe.Customer.create(
+                customer = stripe.Customer.list(
                     email=email,
-                    description='Old Subscription Flow'
                 )
+                if len(customer["data"]) > 0:
+                    customer = customer["data"][0]
+                else:
+                    customer = stripe.Customer.create(
+                        email=email,
+                        description="Old Sub flow"
+                    )
                 return JsonResponse(customer)
             except Exception as e:
                 raise e
+        if customerId and not invoiceId:
+            trial_end = ceil(datetime.now().timestamp())+30 if data.get(
+                'trial', False) == 'true' else None
+            logger.info(trial_end)
+            try:
+                pm = stripe.PaymentMethod.attach(
+                    data['paymentMethodId'],
+                    customer=customerId
+                )
+                logger.info(f'Payment method attached: {pm}')
+                cust = stripe.Customer.modify(
+                    customerId,
+                    invoice_settings={
+                        'default_payment_method': data['paymentMethodId']
+                    }
+                )
+                logger.info(f'Customer modified: {cust}')
+                subscription = stripe.Subscription.create(
+                    customer=customerId,
+                    items=[{
+                        'price': data['priceId']
+                    }],
+                    payment_behavior="allow_incomplete",
+                    trial_end=trial_end,
+                    expand=["latest_invoice.payment_intent"]
+                )
 
+                return JsonResponse(subscription)
+            except Exception as e:
+                return JsonResponse({'error': str(e)})
+        if invoiceId:
+            try:
+                pm = stripe.PaymentMethod.attach(
+                    data['paymentMethodId'],
+                    customer=customerId
+                )
+                logger.info(f'Payment method attached: {pm}')
+                stripe.Customer.modify(
+                    customerId,
+                    invoice_settings={
+                        'default_payment_method': data['pamyentMethodId']
+                    },
+                )
+                invoice = stripe.Invoice.retrieve(
+                    invoiceId,
+                    expand=['payment_intent']
+                )
+                return JsonResponse(invoice)
+            except Exception as e:
+                raise e
+        if subscriptionId:
+            sub = stripe.Subscription.delete(subscriptionId)
+            return JsonResponse(sub)
+        return JsonResponse({'message': 'Looks like you missed something'}, status=404)
+
+
+class CustomerPortalView(generic.TemplateView):
+    """
+    Creating link to customer portal following this guide
+    https://stripe.com/docs/billing/subscriptions/integrating-customer-portal
+    """
+    template_name = "customer_portal.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        config = stripe.billing_portal.Configuration.create(
+            features={
+                'customer_update': {
+                    'allowed_updates': ["email", ],
+                    "enabled": True,
+                }
+            },
+            business_profile={
+                "privacy_policy_url":
+                "https://example.com/privacy",
+                "terms_of_service_url":
+                "https://example.com/terms",
+            },
+
+        )
+        portal_session = stripe.billing_portal.Session.create(
+            customer="cus_KiBEeUaDQ2yrjM",
+            return_url="https://rmanzer-foo.tunnel.stripe.me/success",
+            configuration=config["id"],
+        )
+        context['portal_session'] = portal_session
+        return context
+
+
+class ConnectAccountsView(generic.TemplateView):
+
+    """
+    Creating and linking Connect accounts using this guide
+    https://stripe.com/docs/connect/standard-accounts
+    """
+    template_name = "connect_accounts.html"
+    express_account = 'acct_1K9GySRNhW8G2yaj'
+    custom_account = 'acct_1K9HGPRKcj8gBs4N'
+    transfer_group = 'Klammth-01'
+
+    def account_context(self, context):
+        context['account_types'] = ['standard', 'express', 'custom']
+        context['business_types'] = ['individual',
+                                     'company', 'non_profit', 'government_entity']
+        return context
+
+    def sale_context(self, context):
+        context['hourly_rate'] = 10000
+        context['billable_hours'] = 1
+        context['product'] = 'Software Consulting Hour'
+        acct_id = stripe.Account.list(limit=1)['data'][0]['id']
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card', ],
+            line_items=[{
+                'name': context['product'],
+                'amount': context['hourly_rate'],
+                'currency': 'usd',
+                'quantity': context['billable_hours'],
+            }],
+            payment_intent_data={
+                # 'application_fee_amount': int(context['hourly_rate']*context['billable_hours'] * .1),
+                # 'transfer_data': {
+                #     'destination': 'acct_1K9GySRNhW8G2yaj',
+                #     'amount': int(context['hourly_rate']*context['billable_hours']*.5)
+                # },
+                # 'on_behalf_of': 'acct_1K9GySRNhW8G2yaj',
+                'transfer_group': self.transfer_group
+            },
+            mode='payment',
+            success_url="https://rmanzer-foo.tunnel.stripe.me/make-transfers?session_id={CHECKOUT_SESSION_ID}",
+            cancel_url='https://rmanzer-foo.tunnel.stripe.me/cancelled/',
+            # stripe_account=acct_id - Not used for destination payments, since they are created on the platform
+        )
+        context['payment_url'] = session.url
+        return context
+
+    def transfer_context(self, context):
+        context['express_account'] = stripe.Account.retrieve(
+            self.express_account)
+        context['custom_account'] = stripe.Account.retrieve(
+            self.custom_account)
+        context['express_amount'] = 4000
+        context['custom_amount'] = 6000
+        return context
+
+    def get_context_data(self, **kwargs):
+        # Define account and business types in one place, easier to maintain
+        context = super().get_context_data(**kwargs)
+        logger.info(context)
+        context_functions = {
+            '/make-transfers': self.transfer_context,
+            '/connect-accounts': self.account_context,
+            '/connect-sale': self.sale_context
+        }
+        context = context_functions[self.request.path](context)
+
+        return context
+
+    def make_account(self, request):
+        data = request.POST
+        try:
+            account = stripe.Account.create(
+                type=data['type'],
+                country='US',
+                email=data['email'],
+                business_type=data['business_type'],
+                capabilities={
+                    'card_payments': {'requested': True},
+                    'transfers': {'requested': True},
+                },
+                business_profile={
+                    'product_description': 'Really nifty stuff. Like, you will not believe it.  Seriously'
+                }
+            )
+            link = stripe.AccountLink.create(
+                account=account['id'],
+                refresh_url='https://example.com/reauth',
+                return_url="https://rmanzer-foo.tunnel.stripe.me/success",
+                type="account_onboarding",
+            )
+            return JsonResponse({'msg': "Success!", 'account': account['id'], 'url': link.url})
+        except Exception as e:
+            raise e
+
+    def make_connect_customer(self, request):
+        try:
+            data = request.POST
+            acct = data.get('connect_account', 'acct_1K8rx8RJMfrnDen1')
+            customer = stripe.Customer.create(
+                email=data.get('email', "bob@ross.paint"),
+                stripe_account=acct,
+            )
+            return JsonResponse({'msg': "Success! Customer created for Connect Account", 'account': acct, 'customer': customer['id']})
+        except Exception as e:
+            raise e
+
+    def make_transfers(self, request):
+        data = request.POST
+        session_id = data.get('session_id', False)
+        if session_id:
+            session = stripe.checkout.Session.retrieve(
+                session_id, expand=['payment_intent'])
+            charge_id = session['payment_intent']['charges']['data'][0]['id']
+            charge_status = session['payment_intent']['charges']['data'][0]['status']
+            if charge_id and charge_status == 'succeeded':
+                # Express transfer
+                stripe.Transfer.create(
+                    amount=data.get('express_amount', 0),
+                    currency='usd',
+                    destination=self.express_account,
+                    # transfer_group=self.transfer_group,
+                    source_transaction=charge_id
+                )
+                # Custom transfer
+                stripe.Transfer.create(
+                    amount=data.get('custom_amount', 0),
+                    currency='usd',
+                    destination=self.custom_account,
+                    # transfer_group=self.transfer_group,
+                    source_transaction=charge_id
+                )
+                return HttpResponseRedirect(reverse_lazy('payments:success'))
+            else:
+                raise Exception('Charge not successful...yet')
+        else:
+            raise Exception('No Checkout Session ID provided')
+
+    def post(self, request, *args, **kwargs):
+        """
+        mapping Connect account actions to rqeuest paths
+        """
+        # This approach allows us to encapsulate Connect functionality in a
+        # single view class while keeping our code relateively clean
+        # and delegating responsiblity.
+        responses = {
+            '/connect-accounts': self.make_account,
+            '/add-connect-customer': self.make_connect_customer,
+            '/make-transfers': self.make_transfers,
+        }
+
+        return responses[request.path](request)
 
 # ---------------------------------------------------------------------------
 #                       FUNCTION BASED VIEWS
@@ -662,7 +912,6 @@ def stripe_config(request):
 def create_checkout_session(request):
     if request.method == 'GET':
         domain_url = get_host(request)
-        stripe.api_key = settings.STRIPE_SECRET_KEY
         try:
             checkout_session = stripe.checkout.Session.create(
                 success_url=domain_url +

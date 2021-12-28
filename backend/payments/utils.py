@@ -5,6 +5,8 @@ from logging import getLogger
 
 logger = getLogger(__name__)
 
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
 
 def attach_payment():
     """
@@ -36,9 +38,19 @@ def rm_subscriptions():
     """
     Remove incomplete subscriptions
     """
-    stripe.api_key = settings.STRIPE_SECRET_KEY
+
     [
         stripe.Subscription.cancel(s['id'])
         for s in stripe.Subscription.list(
             status='incomplete', limit=100)['data']
     ]
+
+
+def rm_empty_customers():
+    """
+    Remove customers without a name
+    """
+    customers = stripe.Customer.list(limit=10)
+    for customer in customers.auto_paging_iter():
+        if customer['name'] == None or customer['name'] == 'Old Subscription Flow':
+            stripe.Customer.delete(customer['id'])

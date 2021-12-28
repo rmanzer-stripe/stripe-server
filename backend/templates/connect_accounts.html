@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% load static  payment_extras %}
+{% block title %}
+Connect Accounts
+{% endblock title %}
+
+{% block main %}
+<div class="container">
+    <div class="row">
+        <div class="col s10 offset-s1">
+            <div class="card">
+                <div class="card-image">
+                    <img 
+                    src="https://images.pexels.com/photos/4339335/pexels-photo-4339335.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260" 
+                    alt=""
+                    height="400"
+                    >
+                    <span class="card-title">Connect Account Details</span>
+                </div>
+                <div class="card-content">
+                    {% if account_types %}
+                        <form action="" id="account-details" method="POST">
+                            {% csrf_token %}
+                            <div class="row">
+                                <div class="col s6 input-field">
+                                    <select name="type" id="type">
+                                        {% for type in account_types %}
+                                            <option value="{{type}}">{{type|capfirst}}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <label for="type">Account Type</label>
+                                </div>
+                                <div class="col s6 input-field">
+                                    <input type="email" name="email" id="email" class="validate">
+                                    <label for="email">Email Address</label>
+                                </div>
+                                <div class="col s6 input-field">
+                                    <select name="business_type" id="business-type">
+                                        {% for type in business_types %}
+                                            <option value="{{type}}">{{type|capfirst}}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </form>
+                    
+                    {% elif request.path == '/make-transfers' %}
+                        <form action="" method="post" id="transfers">
+                            {% csrf_token %}
+                            <div class="row">
+                                <input type="hidden" name="session_id" id="session_id">
+                                <h2>Transfer Funds</h2>
+                                <div class="divider"></div>
+                                <p class="flow-text">By clicking the button below, you are authorizing the transfers detailed below</p>
+                                <div class="col s6 center-align">
+                                    <h4>Express Account</h4>
+                                    <ul>
+                                        <li>
+                                            {{express_account.email}}
+                                        </li>
+                                        <li>
+                                            {{express_account.business_type}}
+                                        </li>
+                                        <li>
+                                            {{express_amount|stripe_amount:express_account.default_currency}}
+                                            <input type="hidden" name="express_amount" value="{{express_amount}}">
+                                        </li>
+                                    </ul>
+                                    
+                                </div>
+                                <div class="col s6 center-align">
+                                    <h4>Custom Account</h4>
+                                    <ul>
+                                        <li>
+                                            {{custom_account.email}}
+                                        </li>
+                                        <li>
+                                            {{custome_account.business_type}}
+                                        </li>
+                                        <li>
+                                            {{custom_amount|stripe_amount:custom_account.default_currency}}
+                                            <input type="hidden" name="custom_amount" value="{{custom_amount}}">
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </form>
+                    {% elif product %}
+                        <h2 class="my-4">
+                            Pay Connect Account Charges
+                        </h2>
+                        <div class="divider"></div>
+                        <p class="flow-text">Clicking the button below will take you to a payment form for the following service(s):</p>
+                        <ul>
+                            <li><bold>Service:</bold>{{product}}</li>
+                            <li>
+                                <bold>Hourly Rate:</bold>{{hourly_rate|stripe_amount:'usd'}}
+                            </li>
+                            <li>
+                                <bold>Billable Hours:</bold>{{billable_hours}}
+                            </li>
+                        </ul>
+                    {% endif %}
+                </div>
+                <div class="card-action center-align">
+                    {% if account_types %}
+                        <button class="flex-button" type="submit" form="account-details" id="form-btns">
+                            <i class="material-icons">add_circle_outline</i>
+                            Add Connect Account
+                        </button>
+                    {% elif product %}
+                        <a href="{{payment_url}}" class="btn btn-large indigo darken-2">
+                            <i class="material-icons">attach_money</i>
+                            Pay for Service
+                        </a>
+                    {% else %}
+                        <button type="submit" class="flex-button" id="form-btn" form="transfers">
+                            <i class="material-icons">transfer_within_a_station</i>
+                            Transfer Funds
+                        </button>
+                    {% endif %}
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main %}
+
+{% block script %}
+<script src="{% static 'js/connect_accounts.js'%}"></script>
+{% endblock script %}

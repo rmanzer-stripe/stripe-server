@@ -3,14 +3,36 @@ services:
   stripe:
     restart: always
     build:
-      context: .
+      context: ./backend
     ports:
       - "8000:8000"
     volumes:
-      - ./:/code
+      - ./backend:/usr/src/app
     env_file: .env
     command: ./manage.py runserver 0.0.0.0:8000
-  
+  worker:
+    restart: always
+    build:
+      context: ./backend
+    volumes:
+      - ./backend:/usr/src/app
+    env_file: .env
+    links:
+      - stripe
+      - postgres
+      - redis
+    depends_on:
+      - redis
+    command: celery -A stripe_server worker -l info
+  scheduler:
+    restart: alaways
+    build:
+      context: ./backend
+    command: celery -A stripe_server beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file:
+      - .env
+    depends_on:
+      - redis
   postgres:
     image: postgres:latest
     restart: always
@@ -19,6 +41,21 @@ services:
       - pg_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+  
+  redis:
+    image: redis:latest
+    restart: always
+    env_file:
+      - .env
+    
+  rabbitmq:
+    image: rabbitmq:latest
+    restart: always
+    hostname: rabbitmq
+    ports:
+      - "15672:15672"
+    env_file:
+      - .env
 
 volumes:
   pg_data: {}

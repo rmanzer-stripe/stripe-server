@@ -10,3 +10,8 @@ class PaymentIntent(models.Model):
 class Customer(models.Model):
     id = models.CharField(max_length=200, primary_key=True)
     data = models.JSONField(encoder=DjangoJSONEncoder, null=True)
+
+
+class Dispute(models.Model):
+    id = models.CharField(max_length=255, primary_key=True)
+    data = models.JSONField(encoder=DjangoJSONEncoder, null=True)

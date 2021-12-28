@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/3.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
-
+# from datetime import timedelta
 from pathlib import Path
 import os
 
@@ -40,8 +40,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Custom API configuration
+    'api.apps.ApiConfig',
+    # Django REST Framework
+    # https://www.django-rest-framework.org/
+    'rest_framework',
     # My applications
     'payments.apps.PaymentsConfig',
+    # CORS Headers
+    'corsheaders',
+    # Django/Celery Scheduling
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -196,3 +205,50 @@ LOGGING = {
         }
     }
 }
+
+
+# Django REST Framework Settings
+# https://www.django-rest-framework.org/api-guide/settings/
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'api.pagination.PageCountPaginator',
+    'PAGE_SIZE': 10,
+    "DEFAULT_RENDERDER_CLASSES": [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+        'django_filters.rest_framework.DjangoFilterBackend'
+    ],
+    # USEING SIMPLE JWT AS AUTHENTICATIO MECHANISM
+    # https://django-rest-framework-simplejwt.readthedocs.io/en/latest/getting_started.html
+    # 'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication', )
+}
+
+# Simple JWT Settings
+# https://django-rest-framework-simplejwt.readthedocs.io/en/latest/settings.html
+# SIMPLE_JWT = {
+#     # How long an access token is good for
+#     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+#     # how long the refresh token is good for
+#     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+#     # Logging in throug the front-end will update the last_login User field
+#     'UPDATE_LAST_LOGIN': True,
+#     'AUTH_HEADER_TYPES': ('Bearer', ),
+#     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+# }
+
+# Django CORS Headers SEttings
+# https://pypi.org/project/django-cors-headers/
+
+CORS_ALLOW_ALL_ORIGINS = True
+
+
+# CELERY SETTINGS
+# https://docs.celeryproject.org/en/stable/django/first-steps-with-django.html#using-celery-with-django
+
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30*60
+CELERY_BROKER_URL = "redis://redis:6379"
+CELERY_RESULT_BACKEND = "redis://redis:6379"

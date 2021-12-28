@@ -28,6 +28,7 @@
                         <input type="hidden" id="customerId" value="">
                         <div class="row">
                             <form action="" id="payment-form" style="display: none;">
+                                {% csrf_token %}
                                 <div class="row">
                                     <div class="col s6 center-align">
                                         <label class="card-radio" for="basic">
@@ -61,6 +62,16 @@
                                     </div>
                                 </div>
                                 <div class="row mt-2">
+                                    <div class="col s6 offset-s3">
+                                        <h5>30 Day Free Trial</h5>
+                                        <select name="trial" id="trial">
+                                            <option value="true">Yes</option>
+                                            <option value="false">No</option>
+                                        </select>
+                                        
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
                                     <div class="input-field col s10 offset-s1">
                                         <input type="text" id="full-name" >
                                         <label for="full-name">Full Name</label> 
@@ -74,10 +85,15 @@
                                 </div>
                             </form>
                         </div>
+                        <div class="row" id="success-message" style="display:none;"></div>
                         <div class="row" id="error-message" style="display:none;"></div>
                     </div>
                     <div class="card-action center-align">
                         <button type="submit" class="flex-button" form="customer" id="submit-btn">Submit Email</button>
+                        <a href="/" class="btn indigo darken-2 white-text" id="home-btn" style="display:none;">
+                            <i class="material-icons prefix">home</i>
+                            Go Home
+                        </a>
                     </div>
                 </div>
             </div>
