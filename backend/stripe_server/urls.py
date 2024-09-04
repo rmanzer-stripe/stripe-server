@@ -27,5 +27,5 @@ urlpatterns = [
 
 # Adding in REST API URL mappings
 urlpatterns += [
-    path('api', include('api.urls'))
+    path('api/', include('api.urls'))
 ]

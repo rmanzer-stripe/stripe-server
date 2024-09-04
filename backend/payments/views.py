@@ -1,4 +1,6 @@
-
+from locale import currency
+import pdb
+from typing import Any
 import stripe
 import pprint
 import logging
@@ -12,9 +14,14 @@ from math import ceil
 from django.views import generic
 from django.conf import settings
 from django.contrib import messages
-from django.http.response import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.http.response import (
+    HttpResponse,
+    HttpResponseRedirect,
+    JsonResponse,
+)
 from django.http.request import HttpRequest
 from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from django.urls import reverse_lazy
 from stripe.api_resources import account, source_transaction, subscription
 from stripe.api_resources.checkout import session
@@ -22,6 +29,7 @@ from stripe.api_resources.checkout import session
 
 from payments.forms import EvidenceForm
 from payments import models
+from payments import tasks
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 printer = pprint.PrettyPrinter(indent=4)
@@ -40,10 +48,10 @@ def print_event(msg: str, data: dict, n=100):
     Returns:
         None: All information printed to screen
     """
-    print('='*n)
-    print(f'\n{msg}\n')
+    print("=" * n)
+    print(f"\n{msg}\n")
     printer.pprint(data)
-    print('='*n)
+    print("=" * n)
 
 
 def get_host(request: HttpRequest):
@@ -58,7 +66,7 @@ def get_host(request: HttpRequest):
     return f"{request.scheme}://{request.headers['Host']}"
 
 
-def get_customer(name='Phillip Marlowe'):
+def get_customer():
     """
     Return Stripe customer object
 
@@ -68,24 +76,19 @@ def get_customer(name='Phillip Marlowe'):
     Returns:
         [dict]: Customer object as dictionary
     """
-    customerRec = models.Customer.objects.filter(
-        data__name=name)
+    customerRec = models.Customer.objects.first()
     if customerRec:
-        customer = stripe.Customer.retrieve(
-            customerRec[0].id
-        )
-        customerRec[0].data = customer
-        customerRec[0].save()
+        customer = stripe.Customer.retrieve(customerRec.id)
+        customerRec.data = customer
+        customerRec.save()
     else:
         customer = stripe.Customer.create(
-            name=name,
+            name="Phillip Marlowe",
             description="Southern California gumshoe",
         )
-        models.Customer.objects.create(
-            id=customer['id'],
-            data=customer
-        )
+        models.Customer.objects.create(id=customer["id"], data=customer)
     return customer
+
 
 # ---------------------------------------------------------------------------
 #                       ClASS BASED VIEWS
@@ -94,45 +97,42 @@ def get_customer(name='Phillip Marlowe'):
 
 
 class HomePageView(generic.TemplateView):
-    template_name = 'home.html'
+    template_name = "home.html"
 
 
 class SuccessView(generic.TemplateView):
-    template_name = 'success.html'
+    template_name = "success.html"
 
 
 class CancelledView(generic.TemplateView):
-    template_name = 'cancelled.html'
+    template_name = "cancelled.html"
 
 
 class DisputeList(generic.TemplateView):
-    template_name = 'dispute_list.html'
+    template_name = "dispute_list.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        stripe.api_key = settings.STRIPE_SECRET_KEY
-        context['disputes'] = stripe.Dispute.list(limit=100)
+        context["disputes"] = stripe.Dispute.list(limit=100)
         return context
 
 
 class ProvideEvidence(generic.FormView):
-    template_name = 'evidence_form.html'
+    template_name = "evidence_form.html"
     form_class = EvidenceForm
-    success_url = reverse_lazy('payments:dispute-list')
+    success_url = reverse_lazy("payments:dispute-list")
 
     def get(self, request, *args, **kwargs):
         resp = super().get(request, *args, **kwargs)
-        resp.context_data['form'].fields['dispute_id'].initial = kwargs['id']
+        resp.context_data["form"].fields["dispute_id"].initial = kwargs["id"]
         return resp
 
     def post(self, request, *args, **kwargs):
-        stripe.api_key = settings.STRIPE_SECRET_KEY
         form = EvidenceForm(request.POST)
         if form.is_valid():
-            disp_id = form.cleaned_data.pop('dispute_id')
+            disp_id = form.cleaned_data.pop("dispute_id")
             response = stripe.Dispute.modify(
-                disp_id,
-                evidence=form.cleaned_data
+                disp_id, evidence=form.cleaned_data
             )
             logger.info(response)
         resp = super().post(request, *args, **kwargs)
@@ -140,15 +140,14 @@ class ProvideEvidence(generic.FormView):
 
 
 class PaymentIntent(generic.TemplateView):
-    template_name = 'pi_checkout.html'
+    template_name = "pi_checkout.html"
 
     def get_customer(self):
         customerRec = models.Customer.objects.filter(
-            data__name='Phillip Marlowe')
+            data__name="Phillip Marlowe"
+        )
         if customerRec:
-            customer = stripe.Customer.retrieve(
-                customerRec[0].id
-            )
+            customer = stripe.Customer.retrieve(customerRec[0].id)
             customerRec[0].data = customer
             customerRec[0].save()
         else:
@@ -156,33 +155,33 @@ class PaymentIntent(generic.TemplateView):
                 name="Phillip Marlowe",
                 description="Southern California gumshoe",
             )
-            models.Customer.objects.create(
-                id=customer['id'],
-                data=customer
-            )
+            models.Customer.objects.create(id=customer["id"], data=customer)
         return customer
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        stripe.api_key = settings.STRIPE_SECRET_KEY
-        logger.info('Getting/Creating customer')
+        logger.info("Getting/Creating customer")
         customer = self.get_customer()
-        logger.info('Setting up payment intent')
+        logger.info("Setting up payment intent")
 
         idemp_key = str(uuid.uuid4())
         intent = stripe.PaymentIntent.create(
-            customer=customer['id'],
             amount=14000,
-            currency='usd',
-            metadata={'integration_check': 'accept_a_payment',
-                      'message': 'stuff is great, I like stuff.'},
+            currency="usd",
+            metadata={
+                "integration_check": "accept_a_payment",
+                "message": "stuff is great, I like stuff.",
+            },
             idempotency_key=idemp_key,
-            setup_future_usage='off_session',
-            automatic_payment_methods={
-                'enabled': True
-            }
+            setup_future_usage="off_session",
+            # payment_method_types=['us_bank_account', 'card'],
+            payment_method="pm_1Mb7qVIlCeH6bP8Rg99MhyLz",
+            statement_descriptor_suffix="TEST",
+            # confirm=False,
+            confirm=True,
+            return_url="https://example.com",
         )
-        context['client_secret'] = intent.client_secret
+        context["client_secret"] = intent.client_secret
         return context
 
     def get(self, request, *args, **kwargs):
@@ -192,91 +191,136 @@ class PaymentIntent(generic.TemplateView):
 
 
 class PaymentIntentHold(generic.TemplateView):
-    template_name = 'pi_checkout2.html'
+    template_name = "pi_checkout2.html"
 
     def generate_response(self, intent):
         logger.info(intent)
-        if intent.status == 'requires_action' and intent.next_action.type == 'use_stripe_sdk':
+        if (
+            intent.status == "requires_action"
+            and intent.next_action.type == "use_stripe_sdk"
+        ):
             # Tell the client to handle the action
-            return JsonResponse({
-                'requires_action': True,
-                'payment_intent_client_secret': intent.client_secret
-            })
-        elif intent.status == 'succeeded':
-            return JsonResponse({'success': True}, status=200)
-        elif intent.status == 'requires_capture':
-            return JsonResponse({'message': 'Your payment details have been captured and you will be billed later'})
+            return JsonResponse(
+                {
+                    "requires_action": True,
+                    "payment_intent_client_secret": intent.client_secret,
+                }
+            )
+        elif (
+            intent.status == "requires_action"
+            and intent.next_action.type == "redirect_to_url"
+        ):
+            return JsonResponse(
+                {"url": intent.next_action.redirect_to_url.url}
+            )
+        elif intent.status == "succeeded":
+            return JsonResponse({"success": True}, status=200)
+        elif intent.status == "requires_capture":
+            return JsonResponse(
+                {
+                    "message": "Your payment details have been captured and you will be billed later"
+                }
+            )
         else:
-            return JsonResponse({'error': 'Invalid PaymentIntent status'}, status=500)
+            return JsonResponse(
+                {"error": "Invalid PaymentIntent status"}, status=500
+            )
 
     def post(self, request, *args, **kwargs):
         data = json.loads(request.body)
         logger.info(data)
         intent = None
         try:
-            if 'payment_method_id' in data.keys():
-                stripe.api_key = settings.STRIPE_SECRET_KEY
+            if "payment_method_id" in data.keys():
                 intent = stripe.PaymentIntent.create(
-                    payment_method=data['payment_method_id'],
+                    # payment_method=data['payment_method_id'],
                     amount=1099,
-                    currency='usd',
+                    currency="usd",
                     confirm=True,
-                    capture_method='manual',
+                    capture_method="manual",
+                    customer="cus_MuAXDk5qaM3Lv8",
+                    payment_method="card_1MPVA9IlCeH6bP8RrmfbVo3U",
+                    setup_future_usage="off_session",
+                    off_session=False,
+                    return_url="https://supermanzer.github.io",
+                    payment_method_types=["card"],
                 )
-            elif 'payment_intent_id' in data:
+                logger.info(
+                    "Intent returned {}".format(printer.pprint(intent))
+                )
+            elif "payment_intent_id" in data:
                 intent = stripe.PaymentIntent.confirm(
-                    data['payment_intent_id'])
+                    data["payment_intent_id"]
+                )
         except stripe.error.CardError as e:
-            return JsonResponse({'error': e.user_message}, status=500)
+            return JsonResponse({"error": e.user_message}, status=500)
 
         return self.generate_response(intent)
 
 
 class CapturePayments(generic.TemplateView):
-    template_name = 'capture_payments.html'
+    template_name = "capture_payments.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        stripe.api_key = settings.STRIPE_SECRET_KEY
-        intents = list(filter(lambda pi: pi.status ==
-                       'requires_capture', stripe.PaymentIntent.list(limit=100)))
-        context['intents'] = intents
+
+        intents = list(
+            filter(
+                lambda pi: pi.status == "requires_capture",
+                stripe.PaymentIntent.list(limit=100),
+            )
+        )
+        context["intents"] = intents
         return context
 
     def post(self, request, *args, **kwargs):
-        stripe.api_key = settings.STRIPE_SECRET_KEY
-        pi_id = request.POST['id']
-        amount_to_capture = request.POST['amount_to_capture']
-        amount_to_capture = None if amount_to_capture == '' else int(
-            amount_to_capture)
-        capture = bool(request.POST.get('capture', False))
+
+        pi_id = request.POST["id"]
+        amount_to_capture = request.POST["amount_to_capture"]
+        amount_to_capture = (
+            None if amount_to_capture == "" else int(amount_to_capture)
+        )
+        capture = bool(request.POST.get("capture", False))
         if not capture:
             stripe.PaymentIntent.cancel(pi_id)
         else:
             stripe.PaymentIntent.capture(
-                pi_id,
-                amount_to_capture=amount_to_capture
+                pi_id, amount_to_capture=amount_to_capture
             )
-        return HttpResponseRedirect(reverse_lazy('payments:capture'))
+        return HttpResponseRedirect(reverse_lazy("payments:capture"))
 
 
 class UPE(generic.TemplateView):
-    template_name = 'payment_upe.html'
+    template_name = "payment_upe.html"
+    STANDARD_ACCOUNT = "acct_1L6fbfRMSufZOWVI"
+    EXPRESS_ACCOUNT = "acct_1KEIkDRFUPW4DpfP"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         stripe.api_key = settings.STRIPE_SECRET_KEY
+        domain_url = get_host(self.request)
+        sneaky_key = "sneaky_key"
+        sneaky_val = "iamverysneaky"
         intent = stripe.PaymentIntent.create(
-            amount=14000,
+            amount=13000,
             currency="usd",
-            payment_method_types=['card', ],
+            payment_method_options={
+                "us_bank_account": {"verification_method": "instant"}
+            },
+            stripe_account="acct_1L6fbfRMSufZOWVI",
+            statement_descriptor_suffix="v314159",
         )
-        context['client_secret'] = intent.client_secret
+        context["client_secret"] = intent.client_secret
+        context["key"] = sneaky_key
+        context["val"] = sneaky_val
+        # SET TO FALSE IF NOT USING STANDARD ACCOUNT
+        # 'pk_test_51KPF01ROYxWTk1E5027I1U27xCAaVGQa7Q5DOoIpjTxV2wTIVAblQ2NW7qWia6a0FHyJMr9mdYMm3KjAz6rfDfQ3002aInftNp'
+        context["stan_api_key"] = False
         return context
 
 
 class RequestBtn(generic.TemplateView):
-    template_name = 'request_btn.html'
+    template_name = "request_btn.html"
 
     def get_context_data(self, **kwargs):
         stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -285,54 +329,69 @@ class RequestBtn(generic.TemplateView):
         )
         intent = stripe.PaymentIntent.create(
             amount=12099,
-            currency='usd',
+            currency="usd",
+            payment_method_types=[
+                "card",
+            ],
         )
+        # intent = stripe.SetupIntent.create()
         context = super().get_context_data(**kwargs)
-        context['client_secret'] = intent.client_secret
+        context["client_secret"] = intent.client_secret
         return context
+
+    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        response = super().get(request, *args, **kwargs)
+        # Testing for https://jira.corp.stripe.com/browse/PAYWEB-6877
+        response["feature-policy"] = "payment *;"
+        return response
 
 
 class PaymentIntentRefund(generic.TemplateView):
 
-    template_name = 'pi_list.html'
+    template_name = "pi_list.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         stripe.api_key = settings.STRIPE_SECRET_KEY
-        intents = list(filter(lambda pi: pi.status != "canceled",
-                       stripe.PaymentIntent.list(limit=50)))
-        context['intents'] = intents
+        intents = list(
+            filter(
+                lambda pi: pi.status != "canceled",
+                stripe.PaymentIntent.list(limit=50),
+            )
+        )
+        context["intents"] = intents
         return context
 
     def post(self, request, *args, **kwargs):
         # TODO:  Add form handling for full & partial refunds and cancelling here.
         stripe.api_key = settings.STRIPE_SECRET_KEY
-        action = request.POST.get('action', False)
-        intent_id = request.POST.get('intent_id', False)
+        action = request.POST.get("action", False)
+        intent_id = request.POST.get("intent_id", False)
         if intent_id:
             if action == "refund":
-                amount = request.POST.get('amount', 0)
+                amount = request.POST.get("amount", 0)
                 try:
                     response = stripe.Refund.create(
-                        amount=amount,
-                        payment_intent=intent_id
+                        amount=amount, payment_intent=intent_id
                     )
-                    if response['status'] == 'succeeded':
-                        messages.success('Refund processed')
+                    if response["status"] == "succeeded":
+                        messages.success("Refund processed")
                 except stripe.error.InvalidRequestError as e:
                     messages.error(request, f"{e.user_message}")
             if action == "cancel":
                 response = stripe.PaymentIntent.cancel(intent_id)
 
-                if response['status'] == "canceled":
+                if response["status"] == "canceled":
                     messages.info(request, "Payment Intent canceled")
-            return HttpResponseRedirect(reverse_lazy('payments:payment-refund'))
+            return HttpResponseRedirect(
+                reverse_lazy("payments:payment-refund")
+            )
         else:
             raise AttributeError("No `intent_id` provided")
 
 
 class LegacyElementPage(generic.TemplateView):
-    template_name = 'legacy_element.html'
+    template_name = "legacy_element.html"
 
     def handle_customer(self, customer_name, token):
         customer = models.Customer.objects.filter(data__name=customer_name)
@@ -340,14 +399,8 @@ class LegacyElementPage(generic.TemplateView):
             customer = customer[0]
             customer = stripe.Customer.retrieve(customer.id)
         else:
-            customer = stripe.Customer.create(
-                name=customer_name,
-                source=token
-            )
-            models.Customer.objects.create(
-                id=customer.id,
-                data=customer
-            )
+            customer = stripe.Customer.create(name=customer_name, source=token)
+            models.Customer.objects.create(id=customer.id, data=customer)
         return customer
 
     def get_context_data(self, **kwargs):
@@ -356,24 +409,23 @@ class LegacyElementPage(generic.TemplateView):
         return context
 
     def post(self, request, *args, **kwargs):
-        stripe.api_key = settings.STRIPE_SECRET_KEY
-        token = request.POST['stripeToken']
-        customer_name = request.POST.get('cardholderName', False)
+        token = request.POST["stripeToken"]
+        customer_name = request.POST.get("cardholderName", False)
         try:
             if bool(customer_name):
                 customer = self.handle_customer(customer_name, token)
             kwargs = {
-                'amount': 2000,
-                'currency': 'usd',
-                'description': 'Legacy Example',
-                'source': token,
-                'statement_descriptor': 'Nifty stuff'
+                "amount": 2000,
+                "currency": "usd",
+                "description": "Legacy Example",
+                "source": token,
+                "statement_descriptor": "Nifty stuff",
             }
             if customer:
-                kwargs['customer'] = customer.id
-                kwargs.pop('source')
+                kwargs["customer"] = customer.id
+                kwargs.pop("source")
             charge = stripe.Charge.create(**kwargs)
-            messages.success(request, f'Charge created: {charge.id}')
+            messages.success(request, f"Charge created: {charge.id}")
         except stripe.error.CardError as e:
             msg = f"""
                 Request status: {e.http_status}\n
@@ -384,88 +436,94 @@ class LegacyElementPage(generic.TemplateView):
             messages.error(request, msg)
         except Exception as e:
             messages.error(request, str(e))
-        return HttpResponseRedirect(reverse_lazy('payments:legacy-payment'))
+        return HttpResponseRedirect(reverse_lazy("payments:legacy-payment"))
 
 
 class ACHCharge(generic.TemplateView):
-    template_name = 'ach_charge.html'
+    template_name = "ach_charge.html"
 
     def post(self, request, *args, **kwargs):
         stripe.api_key = settings.STRIPE_SECRET_KEY
-        token = request.POST['stripeToken']
-        customer_name = request.POST.get('cardholderName', False)
+        token = request.POST["stripeToken"]
+        customer_name = request.POST.get("cardholderName", False)
         try:
-            customer = stripe.Customer.create(
-                name=customer_name,
-                source=token
-            )
+            customer = stripe.Customer.create(name=customer_name, source=token)
             bank_account = stripe.Customer.retrieve_source(
-                customer.id,
-                customer.default_source
+                customer.id, customer.default_source
             )
             bank_account.verify(amounts=[32, 45])
-            stripe.Charge.create(
-                amount=5000, currency="usd", customer=customer.id)
+            stripe.PaymentIntent.create(
+                amount=5000, currency="usd", customer=customer.id
+            )
             messages.success(
-                request, 'Account logged and verified and $50 charged')
-            return HttpResponseRedirect(reverse_lazy('payments:ach'))
+                request, "Account logged and verified and $50 charged"
+            )
+            return HttpResponseRedirect(reverse_lazy("payments:ach"))
         except Exception as e:
             messages.error(request, str(e))
 
 
 class SetupIntent(generic.TemplateView):
-    template_name = 'setup_intent.html'
+    template_name = "setup_intent.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         stripe.api_key = settings.STRIPE_SECRET_KEY
-        customer = get_customer()
+        # customer = get_customer()
         idemp_key = str(uuid.uuid4())
         intent = stripe.SetupIntent.create(
-            customer=customer['id'],
-            payment_method_types=['card', 'ideal', 'bancontact'],
-            idempotency_key=idemp_key
+            customer="cus_NJCdKNgGbcLHoz",
+            # payment_method="pm_card_visa_credit_fr_cartesBancaires",
+            # payment_method_options={"card": {"network": "cartes_bancaires"}},
+            # confirm=True,
+            idempotency_key=idemp_key,
         )
-        context['setup_intent'] = intent.client_secret
-        context['customer_id'] = customer['id']
-        context['return_url'] = reverse_lazy('payments:setup-intent')
+        context["setup_intent"] = intent.client_secret
+        # context['customer_id'] = 'cus_MUHenvPeIGTl4X'
+        context["return_url"] = reverse_lazy("payments:setup-intent")
         return context
 
 
 class SubscriptionView(generic.TemplateView):
-    template_name = 'subscription.html'
+    template_name = "subscription.html"
 
-    basic_price = 'price_1K1g64IlCeH6bP8RjH6yycp3'
-    basic_img_src = 'basic_sunglasses.jpeg'
+    basic_price = "price_1K1g64IlCeH6bP8RjH6yycp3"
+    basic_img_src = "basic_sunglasses.jpeg"
 
-    premium_price = 'price_1K1g6eIlCeH6bP8RFlnFad9s'
-    premium_img_src = 'premium_sunglasses.jpeg'
+    premium_price = "price_1K1g6eIlCeH6bP8RFlnFad9s"
+    premium_img_src = "premium_sunglasses.jpeg"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['subscription_item'] = {
-            'price': self.basic_price, 'img': self.basic_img_src}
+        context["subscription_item"] = {
+            "price": self.basic_price,
+            "img": self.basic_img_src,
+        }
         return context
 
     def post(self, request, *args, **kwargs):
-        stripe.api_key = settings.STRIPE_SECRET_KEY
+        logger.warning("Subscription with Checkout")
         host = get_host(request)
-        success_url = host + '/success?session_id={CHECKOUT_SESSION_ID}'
+        success_url = host + "/success?session_id={CHECKOUT_SESSION_ID}"
         session = stripe.checkout.Session.create(
             success_url=success_url,
-            cancel_url=f'{host}/cancelled',
-            mode='subscription',
-            line_items=[{
-                'price': request.POST['price_id'],
-                'quantity': 1,
-            }]
+            cancel_url=f"{host}/cancelled",
+            mode="subscription",
+            line_items=[
+                {
+                    "price": request.POST["price_id"],
+                    "quantity": 1,
+                    "description": "This is my nifty thing. I like it",
+                }
+            ],
+            subscription_data={"trial_period_days": 15},
         )
 
         return HttpResponseRedirect(session.url)
 
 
 class ManageSubscriptions(generic.TemplateView):
-    template_name = 'manage_subscriptions.html'
+    template_name = "manage_subscriptions.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -473,61 +531,58 @@ class ManageSubscriptions(generic.TemplateView):
 
         configuration = stripe.billing_portal.Configuration.create(
             business_profile={
-                'privacy_policy_url': 'https://example.com/privacy',
-                'terms_of_service_url': 'https://example.com/terms',
+                "privacy_policy_url": "https://example.com/privacy",
+                "terms_of_service_url": "https://example.com/terms",
             },
             features={
-                'invoice_history': {
-                    'enabled': True,
+                "invoice_history": {
+                    "enabled": True,
                 },
-                'payment_method_update': {
-                    'enabled': True
-                },
+                "payment_method_update": {"enabled": True},
                 "customer_update": {
-                    "allowed_updates": [
-                        "email",
-                        "tax_id"
-                    ],
-                    "enabled": True
+                    "allowed_updates": ["email", "tax_id"],
+                    "enabled": True,
                 },
                 "subscription_cancel": {
                     "cancellation_reason": {
                         "enabled": True,
-                        "options": ['too_expensive', 'unused', 'other']
+                        "options": ["too_expensive", "unused", "other"],
                     },
                     "enabled": True,
                     "mode": "at_period_end",
-                    "proration_behavior": "none"
+                    "proration_behavior": "none",
                 },
-                "subscription_pause": {
-                    "enabled": True
-                },
+                "subscription_pause": {"enabled": True},
                 "subscription_update": {
                     "default_allowed_updates": [
-                        'price', 'quantity',
+                        "price",
+                        "quantity",
                     ],
                     "enabled": True,
                     "products": [
-                        {"prices": ['price_1K1g64IlCeH6bP8RjH6yycp3', 'price_1K1g6eIlCeH6bP8RFlnFad9s', 'price_1K1g2PIlCeH6bP8Rk4OI7UvU'],
-                         # <- Product ID does not match Customer's subscription
-                         'product': 'prod_Kh4Eia4pskgFxc'
-                         }
-                    ]
-                }
-            }
+                        {
+                            "prices": [
+                                "price_1K1g64IlCeH6bP8RjH6yycp3",
+                                "price_1K1g6eIlCeH6bP8RFlnFad9s",
+                                "price_1K1g2PIlCeH6bP8Rk4OI7UvU",
+                            ],
+                            # <- Product ID does not match Customer's subscription
+                            "product": "prod_Kh4Eia4pskgFxc",
+                        }
+                    ],
+                },
+            },
         )
-        context['portal_config'] = configuration
+        context["portal_config"] = configuration
         return context
 
     def post(self, request, *ags, **kwargs):
         stripe.api_key = settings.STRIPE_SECRET_KEY
         customer = get_customer()
-        config_id = request.POST['config_id']
+        config_id = request.POST["config_id"]
         host = get_host(request)
         session = stripe.billing_portal.Session.create(
-            customer=customer['id'],
-            configuration=config_id,
-            return_url=host
+            customer=customer["id"], configuration=config_id, return_url=host
         )
         logger.info(session)
         logger.info(config_id)
@@ -535,80 +590,86 @@ class ManageSubscriptions(generic.TemplateView):
 
 
 class CheckoutLink(generic.TemplateView):
-    template_name = 'checkout_link.html'
+    template_name = "checkout_link.html"
 
 
 class InvoiceView(generic.TemplateView):
-    template_name = 'invoices.html'
-    customer = 'cus_KgfkGWhkAYC3ND'
+    template_name = "invoices.html"
+    customer = "cus_KgfkGWhkAYC3ND"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         stripe.api_key = settings.STRIPE_SECRET_KEY
-        context['prices'] = list(
-            filter(lambda p: p['recurring'] == None, stripe.Price.list(limit=100)))
+        context["prices"] = list(
+            filter(
+                lambda p: p["recurring"] == None, stripe.Price.list(limit=100)
+            )
+        )
         return context
 
     def post(self, request, *args, **kwargs):
         stripe.api_key = settings.STRIPE_SECRET_KEY
-        price_id = request.POST.get('price_id', False)
+        price_id = request.POST.get("price_id", False)
         if price_id:
-            stripe.InvoiceItem.create(
-                customer=self.customer,
-                price=price_id
-            )
+            stripe.InvoiceItem.create(customer=self.customer, price=price_id)
             stripe.Invoice.create(
                 customer=self.customer,
                 auto_advance=False,
-                collection_method='send_invoice',
-                days_until_due=30
+                collection_method="send_invoice",
+                payment_settings={
+                    "payment_method_types": ["us_bank_account"],
+                    "payment_method_options": {
+                        "us_bank_account": {
+                            "financial_connections": {
+                                "permissions": ["payment_method", "balances"]
+                            }
+                        }
+                    },
+                },
+                days_until_due=30,
             )
-        return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+        return HttpResponseRedirect(request.META.get("HTTP_REFERER"))
 
 
 class CheckoutView(generic.TemplateView):
-    template_name = 'checkout.html'
-    price_type = 'subscription'
+    template_name = "checkout.html"
+    price_type = "subscription"
 
     def price_list_filter(self, price):
-        if self.price_type == 'subscription':
-            result = price['recurring'] != None
+        if self.price_type == "subscription":
+            result = price["recurring"] != None
         else:
-            result = price['recurring'] == None
+            result = price["recurring"] == None
         return result
 
     def get_context_data(self, **kwargs):
         stripe.api_key = settings.STRIPE_SECRET_KEY
         context = super().get_context_data(**kwargs)
         context["prices"] = list(
-            filter(
-                self.price_list_filter,
-                stripe.Price.list(limit=100)
-            )
+            filter(self.price_list_filter, stripe.Price.list(limit=100))
         )
-        context["customers"] = list(
-            stripe.Customer.list(limit=100)
-        )
+        context["customers"] = list(stripe.Customer.list(limit=100))
         return context
 
     def post(self, request, *args, **kwargs):
         try:
-            if request.POST.get('action') and request.POST['action'] == 'create-subscription':
+            if (
+                request.POST.get("action")
+                and request.POST["action"] == "create-subscription"
+            ):
                 sub_kwargs = {
-                    'customer': request.POST['customer'],
-                    'items': [{
-                        'price': request.POST['price']
-                    }],
-                    'payment_behavior': 'default_incomplete',
+                    "customer": request.POST["customer"],
+                    "items": [{"price": request.POST["price"]}],
+                    "payment_behavior": "default_incomplete",
                     # 'payment_behavior': 'allow_incomplete',
-                    'expand': ['latest_invoice.payment_intent'],
-                    'metadata': {'one': 1, 'true': True}
+                    "expand": ["latest_invoice.payment_intent"],
+                    "metadata": {"one": 1, "true": True},
                 }
                 subscription = stripe.Subscription.create(**sub_kwargs)
                 return JsonResponse(
                     {
-                        'subscription_id': subscription.id,
-                        'client_secret': subscription.latest_invoice.payment_intent.client_secret
+                        "subscription_id": subscription.id,
+                        "client_secret": subscription.latest_invoice.payment_intent.client_secret,
                     }
                 )
         except Exception as e:
@@ -616,7 +677,7 @@ class CheckoutView(generic.TemplateView):
 
 
 class SubPaymentInfo(generic.TemplateView):
-    template_name = 'payment_info.html'
+    template_name = "payment_info.html"
 
     def get(self, request, *args, **kwargs):
         response = super().get(request, *args, **kwargs)
@@ -631,15 +692,16 @@ class OldSubscriptionView(generic.TemplateView):
     https://stripe.com/docs/billing/subscriptions/fixed-price
 
     """
-    template_name = 'old_subscription.html'
+
+    template_name = "old_subscription.html"
 
     def post(self, request, *args, **kwargs):
 
         data = request.POST
-        email = data.get('email', False)
-        customerId = data.get('customerId', False)
-        invoiceId = data.get('invoiceId', False)
-        subscriptionId = data.get('subscriptionId', False)
+        email = data.get("email", False)
+        customerId = data.get("customerId", False)
+        invoiceId = data.get("invoiceId", False)
+        subscriptionId = data.get("subscriptionId", False)
         if email:
             try:
                 customer = stripe.Customer.list(
@@ -649,58 +711,57 @@ class OldSubscriptionView(generic.TemplateView):
                     customer = customer["data"][0]
                 else:
                     customer = stripe.Customer.create(
-                        email=email,
-                        description="Old Sub flow"
+                        email=email, description="Old Sub flow"
                     )
                 return JsonResponse(customer)
             except Exception as e:
                 raise e
         if customerId and not invoiceId:
-            trial_end = ceil(datetime.now().timestamp())+30 if data.get(
-                'trial', False) == 'true' else None
+            trial_end = (
+                ceil(datetime.now().timestamp()) + 30
+                if data.get("trial", False) == "true"
+                else None
+            )
             logger.info(trial_end)
             try:
                 pm = stripe.PaymentMethod.attach(
-                    data['paymentMethodId'],
-                    customer=customerId
+                    data["paymentMethodId"], customer=customerId
                 )
-                logger.info(f'Payment method attached: {pm}')
+                logger.info(f"Payment method attached: {pm}")
                 cust = stripe.Customer.modify(
                     customerId,
                     invoice_settings={
-                        'default_payment_method': data['paymentMethodId']
-                    }
+                        "default_payment_method": data["paymentMethodId"]
+                    },
                 )
-                logger.info(f'Customer modified: {cust}')
+                logger.info(f"Customer modified: {cust}")
                 subscription = stripe.Subscription.create(
                     customer=customerId,
-                    items=[{
-                        'price': data['priceId']
-                    }],
+                    items=[{"price": data["priceId"]}],
                     payment_behavior="allow_incomplete",
                     trial_end=trial_end,
-                    expand=["latest_invoice.payment_intent"]
+                    expand=["latest_invoice.payment_intent"],
+                    # statement_descriptor="WEIRD STUFF",
+                    off_session=True,
                 )
 
                 return JsonResponse(subscription)
             except Exception as e:
-                return JsonResponse({'error': str(e)})
+                return JsonResponse({"error": str(e)})
         if invoiceId:
             try:
                 pm = stripe.PaymentMethod.attach(
-                    data['paymentMethodId'],
-                    customer=customerId
+                    data["paymentMethodId"], customer=customerId
                 )
-                logger.info(f'Payment method attached: {pm}')
+                logger.info(f"Payment method attached: {pm}")
                 stripe.Customer.modify(
                     customerId,
                     invoice_settings={
-                        'default_payment_method': data['pamyentMethodId']
+                        "default_payment_method": data["pamyentMethodId"]
                     },
                 )
                 invoice = stripe.Invoice.retrieve(
-                    invoiceId,
-                    expand=['payment_intent']
+                    invoiceId, expand=["payment_intent"]
                 )
                 return JsonResponse(invoice)
             except Exception as e:
@@ -708,7 +769,9 @@ class OldSubscriptionView(generic.TemplateView):
         if subscriptionId:
             sub = stripe.Subscription.delete(subscriptionId)
             return JsonResponse(sub)
-        return JsonResponse({'message': 'Looks like you missed something'}, status=404)
+        return JsonResponse(
+            {"message": "Looks like you missed something"}, status=404
+        )
 
 
 class CustomerPortalView(generic.TemplateView):
@@ -716,64 +779,74 @@ class CustomerPortalView(generic.TemplateView):
     Creating link to customer portal following this guide
     https://stripe.com/docs/billing/subscriptions/integrating-customer-portal
     """
+
     template_name = "customer_portal.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         config = stripe.billing_portal.Configuration.create(
             features={
-                'customer_update': {
-                    'allowed_updates': ["email", ],
+                "customer_update": {
+                    "allowed_updates": [
+                        "email",
+                    ],
                     "enabled": True,
-                }
+                },
+                "invoice_history": {"enabled": True},
+                "payment_method_update": {"enabled": True},
             },
             business_profile={
-                "privacy_policy_url":
-                "https://example.com/privacy",
-                "terms_of_service_url":
-                "https://example.com/terms",
+                "privacy_policy_url": "https://example.com/privacy",
+                "terms_of_service_url": "https://example.com/terms",
             },
-
         )
         portal_session = stripe.billing_portal.Session.create(
-            customer="cus_KiBEeUaDQ2yrjM",
-            return_url="https://rmanzer-foo.tunnel.stripe.me/success",
+            customer="cus_PpNUvNttJy8aKS",
+            return_url="https://rmanzer-app.tunnel.stripe.me/success",
             configuration=config["id"],
         )
-        context['portal_session'] = portal_session
+        context["portal_session"] = portal_session
         return context
 
 
 class ConnectAccountsView(generic.TemplateView):
-
     """
     Creating and linking Connect accounts using this guide
     https://stripe.com/docs/connect/standard-accounts
     """
+
     template_name = "connect_accounts.html"
-    express_account = 'acct_1K9GySRNhW8G2yaj'
-    custom_account = 'acct_1K9HGPRKcj8gBs4N'
-    transfer_group = 'Klammth-01'
+    express_account = "acct_1K9GySRNhW8G2yaj"
+    custom_account = "acct_1K9HGPRKcj8gBs4N"
+    transfer_group = "Klammth-01"
 
     def account_context(self, context):
-        context['account_types'] = ['standard', 'express', 'custom']
-        context['business_types'] = ['individual',
-                                     'company', 'non_profit', 'government_entity']
+        context["account_types"] = ["standard", "express", "custom"]
+        context["business_types"] = [
+            "individual",
+            "company",
+            "non_profit",
+            "government_entity",
+        ]
         return context
 
     def sale_context(self, context):
-        context['hourly_rate'] = 10000
-        context['billable_hours'] = 1
-        context['product'] = 'Software Consulting Hour'
-        acct_id = stripe.Account.list(limit=1)['data'][0]['id']
+        context["hourly_rate"] = 10000
+        context["billable_hours"] = 1
+        context["product"] = "Software Consulting Hour"
+        acct_id = stripe.Account.list(limit=1)["data"][0]["id"]
         session = stripe.checkout.Session.create(
-            payment_method_types=['card', ],
-            line_items=[{
-                'name': context['product'],
-                'amount': context['hourly_rate'],
-                'currency': 'usd',
-                'quantity': context['billable_hours'],
-            }],
+            payment_method_types=[
+                "card",
+            ],
+            line_items=[
+                {
+                    "name": context["product"],
+                    "amount": context["hourly_rate"],
+                    "currency": "usd",
+                    "quantity": context["billable_hours"],
+                }
+            ],
             payment_intent_data={
                 # 'application_fee_amount': int(context['hourly_rate']*context['billable_hours'] * .1),
                 # 'transfer_data': {
@@ -781,23 +854,25 @@ class ConnectAccountsView(generic.TemplateView):
                 #     'amount': int(context['hourly_rate']*context['billable_hours']*.5)
                 # },
                 # 'on_behalf_of': 'acct_1K9GySRNhW8G2yaj',
-                'transfer_group': self.transfer_group
+                "transfer_group": self.transfer_group
             },
-            mode='payment',
+            mode="payment",
             success_url="https://rmanzer-foo.tunnel.stripe.me/make-transfers?session_id={CHECKOUT_SESSION_ID}",
-            cancel_url='https://rmanzer-foo.tunnel.stripe.me/cancelled/',
+            cancel_url="https://rmanzer-foo.tunnel.stripe.me/cancelled/",
             # stripe_account=acct_id - Not used for destination payments, since they are created on the platform
         )
-        context['payment_url'] = session.url
+        context["payment_url"] = session.url
         return context
 
     def transfer_context(self, context):
-        context['express_account'] = stripe.Account.retrieve(
-            self.express_account)
-        context['custom_account'] = stripe.Account.retrieve(
-            self.custom_account)
-        context['express_amount'] = 4000
-        context['custom_amount'] = 6000
+        context["express_account"] = stripe.Account.retrieve(
+            self.express_account
+        )
+        context["custom_account"] = stripe.Account.retrieve(
+            self.custom_account
+        )
+        context["express_amount"] = 4000
+        context["custom_amount"] = 6000
         return context
 
     def get_context_data(self, **kwargs):
@@ -805,9 +880,9 @@ class ConnectAccountsView(generic.TemplateView):
         context = super().get_context_data(**kwargs)
         logger.info(context)
         context_functions = {
-            '/make-transfers': self.transfer_context,
-            '/connect-accounts': self.account_context,
-            '/connect-sale': self.sale_context
+            "/make-transfers": self.transfer_context,
+            "/connect-accounts": self.account_context,
+            "/connect-sale": self.sale_context,
         }
         context = context_functions[self.request.path](context)
 
@@ -817,70 +892,81 @@ class ConnectAccountsView(generic.TemplateView):
         data = request.POST
         try:
             account = stripe.Account.create(
-                type=data['type'],
-                country='US',
-                email=data['email'],
-                business_type=data['business_type'],
+                type=data["type"],
+                country="US",
+                email=data["email"],
+                business_type=data["business_type"],
                 capabilities={
-                    'card_payments': {'requested': True},
-                    'transfers': {'requested': True},
+                    "card_payments": {"requested": True},
+                    "transfers": {"requested": True},
                 },
                 business_profile={
-                    'product_description': 'Really nifty stuff. Like, you will not believe it.  Seriously'
-                }
+                    "product_description": "Really nifty stuff. Like, you will not believe it.  Seriously"
+                },
             )
             link = stripe.AccountLink.create(
-                account=account['id'],
-                refresh_url='https://example.com/reauth',
-                return_url="https://rmanzer-foo.tunnel.stripe.me/success",
+                account=account["id"],
+                refresh_url="https://example.com/reauth",
+                return_url="https://rmanzer-app.tunnel.stripe.me/success",
                 type="account_onboarding",
             )
-            return JsonResponse({'msg': "Success!", 'account': account['id'], 'url': link.url})
+            return JsonResponse(
+                {"msg": "Success!", "account": account["id"], "url": link.url}
+            )
         except Exception as e:
             raise e
 
     def make_connect_customer(self, request):
         try:
             data = request.POST
-            acct = data.get('connect_account', 'acct_1K8rx8RJMfrnDen1')
+            acct = data.get("connect_account", "acct_1K8rx8RJMfrnDen1")
             customer = stripe.Customer.create(
-                email=data.get('email', "bob@ross.paint"),
+                email=data.get("email", "bob@ross.paint"),
                 stripe_account=acct,
             )
-            return JsonResponse({'msg': "Success! Customer created for Connect Account", 'account': acct, 'customer': customer['id']})
+            return JsonResponse(
+                {
+                    "msg": "Success! Customer created for Connect Account",
+                    "account": acct,
+                    "customer": customer["id"],
+                }
+            )
         except Exception as e:
             raise e
 
     def make_transfers(self, request):
         data = request.POST
-        session_id = data.get('session_id', False)
+        session_id = data.get("session_id", False)
         if session_id:
             session = stripe.checkout.Session.retrieve(
-                session_id, expand=['payment_intent'])
-            charge_id = session['payment_intent']['charges']['data'][0]['id']
-            charge_status = session['payment_intent']['charges']['data'][0]['status']
-            if charge_id and charge_status == 'succeeded':
+                session_id, expand=["payment_intent"]
+            )
+            charge_id = session["payment_intent"]["charges"]["data"][0]["id"]
+            charge_status = session["payment_intent"]["charges"]["data"][0][
+                "status"
+            ]
+            if charge_id and charge_status == "succeeded":
                 # Express transfer
                 stripe.Transfer.create(
-                    amount=data.get('express_amount', 0),
-                    currency='usd',
+                    amount=data.get("express_amount", 0),
+                    currency="usd",
                     destination=self.express_account,
                     # transfer_group=self.transfer_group,
-                    source_transaction=charge_id
+                    source_transaction=charge_id,
                 )
                 # Custom transfer
                 stripe.Transfer.create(
-                    amount=data.get('custom_amount', 0),
-                    currency='usd',
+                    amount=data.get("custom_amount", 0),
+                    currency="usd",
                     destination=self.custom_account,
                     # transfer_group=self.transfer_group,
-                    source_transaction=charge_id
+                    source_transaction=charge_id,
                 )
-                return HttpResponseRedirect(reverse_lazy('payments:success'))
+                return HttpResponseRedirect(reverse_lazy("payments:success"))
             else:
-                raise Exception('Charge not successful...yet')
+                raise Exception("Charge not successful...yet")
         else:
-            raise Exception('No Checkout Session ID provided')
+            raise Exception("No Checkout Session ID provided")
 
     def post(self, request, *args, **kwargs):
         """
@@ -890,12 +976,118 @@ class ConnectAccountsView(generic.TemplateView):
         # single view class while keeping our code relateively clean
         # and delegating responsiblity.
         responses = {
-            '/connect-accounts': self.make_account,
-            '/add-connect-customer': self.make_connect_customer,
-            '/make-transfers': self.make_transfers,
+            "/connect-accounts": self.make_account,
+            "/add-connect-customer": self.make_connect_customer,
+            "/make-transfers": self.make_transfers,
         }
 
         return responses[request.path](request)
+
+
+@method_decorator(csrf_exempt, name="post")
+class OrdersView(
+    generic.TemplateView,
+):
+    template_name = "orders.html"
+
+    def create_order(self):
+        order = stripe.Order.create(
+            line_items=[
+                {
+                    "price": "price_1K2IjOIlCeH6bP8Rgstmmcfy",
+                    "quantity": 2,
+                },
+                {"price": "price_1K3mDvIlCeH6bP8R43lTj74i", "quantity": 1},
+            ],
+            currency="usd",
+            payment={
+                "settings": {
+                    "payment_method_types": ["card"],
+                },
+            },
+            shipping_details={
+                "name": "Jenny Rosen",
+                "address": {"line1": "100 My Street"},
+            },
+            billing_details={"email": "jenny.rosen@example.com"},
+            stripe_version="2020-08-27;orders_beta=v3",
+            expand=["line_items", "payment.payment_intent"],
+        )
+        logger.info(order)
+        return order
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        order = self.create_order()
+        context["client_secret"] = order.client_secret
+        context["order_id"] = order.id
+        return context
+
+    @csrf_exempt
+    def post(self, request, *args, **kwargs):
+        url = "/v1/orders/{}/submit".format(request.POST["order"])
+        stripe.api_version = "2019-02-19; orders_beta=v3"
+        order = stripe.stripe_object.StripeObject().request(
+            "post", url, {"expected_total": 4000}
+        )
+        return JsonResponse({"msg": "Success", "order": order})
+
+
+class ConnectReauth(generic.TemplateView):
+
+    def get(self, request):
+        return HttpResponse("<h1>Hello World</h1>")
+
+
+class OauthConnect(generic.TemplateView):
+
+    template_name = "oauth_template.html"
+
+    client_id = "ca_KYrUpMlgPz90Y4TP8vvflEwL49LQVSU1"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["client_id"] = self.client_id
+        context["oauth_url"] = (
+            "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=ca_KYrUpMlgPz90Y4TP8vvflEwL49LQVSU1&scope=read_write"
+        )
+
+        return context
+
+
+class OauthRedirect(generic.TemplateView):
+    template_name = "oauth_redirect.html"
+
+    def get(self, request):
+        code = request.GET["code"]
+
+        response = stripe.OAuth.token(
+            grant_type="authorization_code", code=code
+        )
+
+        acct = stripe.Account.retrieve(response["stripe_user_id"])
+
+        return HttpResponse(
+            f"""<h1>Success</h1>
+                            <div>{response}</div>
+                            <div>{acct}</div>
+                            """
+        )
+
+
+class NewSubscription(generic.TemplateView):
+    template_name = "new_subscription.html"
+
+
+class ExpressCheckout(generic.TemplateView):
+    template_name = "express_checkout.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["PK"] = settings.STRIPE_PUBLISHABLE_KEY
+
+        return context
+
 
 # ---------------------------------------------------------------------------
 #                       FUNCTION BASED VIEWS
@@ -904,60 +1096,183 @@ class ConnectAccountsView(generic.TemplateView):
 
 
 def stripe_config(request):
-    if request.method == 'GET':
-        stripe_config = {'publicKey': settings.STRIPE_PUBLISHABLE_KEY}
+    if request.method == "GET":
+        stripe_config = {"publicKey": settings.STRIPE_PUBLISHABLE_KEY}
         return JsonResponse(stripe_config, safe=False)
 
 
 def create_checkout_session(request):
-    if request.method == 'GET':
+    if request.method == "GET":
         domain_url = get_host(request)
         try:
             checkout_session = stripe.checkout.Session.create(
-                success_url=domain_url +
-                "/success?session_id={CHECKOUT_SESSION_ID}",
-                cancel_url=domain_url + '/cancelled/',
-                payment_method_types=['card'],
-                mode='subscription',
+                success_url=domain_url
+                + "/success?session_id={CHECKOUT_SESSION_ID}",
+                cancel_url=domain_url
+                + "/cancelled?session_id={CHECKOUT_SESSION_ID}",
+                # customer='cus_Nhzuurdk3jBWh6',
+                # allow_promotion_codes=True,
+                # mode='subscription',
+                mode="payment",
+                # payment_method_types=['us_bank_account'],
+                # payment_method_types=['card', 'afterpay_clearpay'],
+                # automatic_payment_methods={'enabled': True},
                 shipping_address_collection={
-                    'allowed_countries': ['US', 'CA'],
+                    "allowed_countries": ["US", "CA"]
                 },
-                billing_address_collection='required',
+                # customer_creation='always',
+                # mode='payment',
+                # metadata={
+                #     "test": "is this data copied?",
+                #     "destination": "charge or payment intent"
+                # },
+                # payment_intent_data={"setup_future_usage": "off_session"},
+                # sub line item
+                # line_items=[
+                #     {'price': 'price_1MTTEWIlCeH6bP8Ro1dHtUiZ', 'quantity': 1}
+                # ],
+                custom_text={
+                    "submit": {"message": "This is my sneaky message"}
+                },
                 line_items=[
                     {
-                        'price': 'price_1K2OgHIlCeH6bP8RWtxwQXpm',
-                        'quantity': 1,
-                        'adjustable_quantity': {
-                            'enabled': True,
-                            'minimum': 1,
-                            'maximum': 10,
+                        "price": "price_1McGYcIlCeH6bP8RjvYVPlbS",
+                        "quantity": 1,
+                        "adjustable_quantity": {
+                            "enabled": True,
+                            "maximum": 100,
+                            "minimum": 1,
                         },
-                    }
+                    },
                 ],
-                automatic_tax={
-                    'enabled': True
-                },
-                allow_promotion_codes=True,
+                # billing_address_collection='required',
             )
-            return JsonResponse({'sessionId': checkout_session['id']})
+            return JsonResponse({"sessionId": checkout_session["id"]})
         except Exception as e:
-            return JsonResponse({'error': str(e)})
+            return JsonResponse({"error": str(e)})
 
 
-@ csrf_exempt
+def create_payment_link(request):
+    if request.method == "GET":
+        domain_url = get_host(request)
+        try:
+            plink = stripe.PaymentLink.create(
+                shipping_address_collection={
+                    "allowed_countries": [
+                        "US",
+                    ],
+                },
+                payment_method_types=["affirm", "card"],
+                billing_address_collection="required",
+                line_items=[
+                    {"price": "price_1K2KE7IlCeH6bP8RfttdQgJO", "quantity": 1},
+                ],
+            )
+            print(plink.url)
+            return JsonResponse({"sessionId": plink.id})
+        except Exception as e:
+            return JsonResponse({"error": str(e)})
+
+
+@csrf_exempt
 def stripe_webhook(request):
     stripe.api_key = settings.STRIPE_SECRET_KEY
     endpoit_secret = settings.STRIPE_ENDPOINT_SECRET
     payload = request.body
     # Validating webhook payload vai Stripe signature
-    sig_header = request.META['HTTP_STRIPE_SIGNATURE']
+    sig_header = request.META["HTTP_STRIPE_SIGNATURE"]
+    event = None
+
+    # try:
+    #     # Using official library to construct event from payload
+    #     # this includes verifying the webhook signature
+    #     event = stripe.Webhook.construct_event(
+    #         payload, sig_header, endpoit_secret
+    #     )
+    # except ValueError as e:
+    #     # Invalid payload
+    #     return HttpResponse(status=400)
+    # except stripe.error.SignatureVerificationError as e:
+    #     # Invalid signature
+    #     return HttpResponse(status=400)
+
+    # if event.get('type', '') == 'checkout.session.completed':
+    print("Payment was successful")
+
+    return HttpResponse(status=200)
+
+
+@csrf_exempt
+def webhook2(request):
+    endpoint_secret = settings.STRIPE_ENDPOINT_SECRET
+    payload = request.body  # Need to get the raw body, not json()
+    # Validating webhook payload vai Stripe signature
+
+    sig_header = request.headers.get("Stripe-Signature", None)
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+
+    except ValueError as e:
+        logger.error("Invalid payload ", str(e))
+        return HttpResponse(status=400)
+
+    except stripe.error.SignatureVerificationError as e:
+        logger.error("Invalid Stripe signature: ", str(e))
+        return HttpResponse(status=400)
+
+    if event.type == "issuing_authorization.request":
+        logger.info(f"Event received: {event.type}")
+        approved = tasks.check_approval(event.data.object)
+        logger.info(f"Issuing authorization approval: {approved}")
+        response = JsonResponse(
+            headers={"Stripe-Version": "2020-08-27"},
+            data={"approved": True},
+            status=200,
+        )
+        logger.info(f"Response: {response}")
+        return response
+
+    else:
+        # Asynchronous, concurrent task queue with Celery + RabbitMQ
+        tasks.process_webhook.delay(event)
+
+    return HttpResponse(status=200)
+
+
+@csrf_exempt
+def manual_webhook(request):
+    logger.info(request.headers)
+
+
+def host_apple_stuff(request):
+    fpath = Path(
+        settings.BASE_DIR,
+        "payments",
+        "files/apple-developer-merchantid-domain-association",
+    )
+    logger.info(fpath)
+    f = open(fpath)
+    content = f.read()
+    f.close()
+
+    return HttpResponse(content, content_type="text/plain")
+
+
+@csrf_exempt
+def connect_webhook(request):
+    endpoint_secret = "whsec_liLQCQTkjMqc4CFQ5mjdeMSPNQBRBffy"
+    payload = request.body
+    sig_header = request.META["HTTP_STRIPE_SIGNATURE"]
+
     event = None
 
     try:
         # Using official library to construct event from payload
         # this includes verifying the webhook signature
         event = stripe.Webhook.construct_event(
-            payload, sig_header, endpoit_secret
+            payload, sig_header, endpoint_secret
         )
     except ValueError as e:
         # Invalid payload
@@ -965,125 +1280,5 @@ def stripe_webhook(request):
     except stripe.error.SignatureVerificationError as e:
         # Invalid signature
         return HttpResponse(status=400)
-
-    if event.get('type', '') == 'checkout.session.completed':
-        print('Payment was successful')
-
+    logger.info(event)
     return HttpResponse(status=200)
-
-
-@ csrf_exempt
-def webhook2(request):
-    stripe.api_key = settings.STRIPE_SECRET_KEY
-    endpoit_secret = settings.STRIPE_ENDPOINT_SECRET
-    payload = request.body  # Need to get the raw body, not json()
-    # Validating webhook payload vai Stripe signature
-
-    sig_header = request.META['HTTP_STRIPE_SIGNATURE']
-
-    try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, endpoit_secret
-        )
-
-    except ValueError as e:
-        print('Invalid payload ', str(e))
-        return HttpResponse(status=400)
-
-    except stripe.error.SignatureVerificationError as e:
-        print('Invalid Stripe signature: ', str(e))
-        return HttpResponse(status=400)
-
-    etype = event.get('type', '')
-    if etype.startswith('account'):
-        print_event(msg='An account event has occurred', data=event)
-
-    elif etype.startswith('charge.dispute'):
-        print_event(msg="CHARGE DISPUTE EVENT! HOLY CRAP!", data=event)
-
-    elif etype == 'charge.succeeded':
-        print_event(msg='A charge event has succeeded', data=event)
-
-    elif etype.startswith('checkout'):
-        print_event(msg='A checkout event has occurredd', data=event)
-
-    elif etype == 'payment_intent.created':
-        print_event(msg='A payment_intent event has been created',
-                    data=event['data'])
-
-    elif etype == 'payment_intent.confirmed':
-        print_event(msg='A payment_intent event has been confirmed',
-                    data=event['data'])
-
-    elif etype == 'payment_intent.canceled':
-        print_event(msg='A payment_intent event has been canceled',
-                    data=event['data'])
-
-    elif etype == 'customer.created':
-        print_event(msg='New Customer Created', data=event)
-        cust = event['data']['object']
-        models.Customer.objects.get_or_create(
-            id=cust['id'],
-            defaults={'data': cust}
-        )
-
-    elif etype == 'customer.updated':
-        cust = event['data']['object']
-        logger.info(f'Customer {cust["name"]} updated')
-        models.Customer.objects.filter(id=cust['id']).update(data=cust)
-
-    elif etype == 'checkout.session.completed':
-        logger.info(
-            f'Checkout Payment is successful and subscription created:\n{event}')
-
-    elif etype == "invoice.created":
-        pass
-        # invoice = event['data']['object']
-        # item = stripe.InvoiceItem.create(
-        #     customer=invoice['customer'],
-        #     price='price_1K3mDvIlCeH6bP8R43lTj74i',  # Price for stuff...pricey stuff
-        #     invoice=invoice['id']
-        # )
-        # logger.info(f'InvoiceItem added to newly created invoice: {item}')
-
-    elif etype == "invoice.payment_succeeded":
-        data_object = event['data']['object']
-        if data_object['billing_reason'] == 'subscription_create':
-            subscription_id = data_object['subscription']
-            payment_intent_id = data_object['payment_intent']
-
-            payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
-
-            stripe.Subscription.modify(
-                subscription_id,
-                default_payment_method=payment_intent.payment_method
-            )
-
-    elif etype.startswith('invoice.') and etype != "invoice.created":
-        invoice = event['data']['object']
-        status = invoice["status"]
-        logger.info(f'An invoice with status {status} was received')
-        # if status == "draft":
-        #     stripe.Invoice.finalize_invoice(invoice['id'])
-        #     logger.info(f'Invoice {invoice["id"]} finalized')
-        # elif status == "open":
-        #     stripe.Invoice.pay(invoice['id'])
-        #     logger.info(f'Invoice {invoice["id"]} paid')
-        # else:
-        print_event(msg="Stuff happened with an invoice", data=event)
-
-    elif etype == 'payment_method.created':
-        print_event(msg='New Payment Method Created', data=event)
-
-    return HttpResponse(status=200)
-
-
-def host_apple_stuff(request):
-    fpath = Path(settings.BASE_DIR, 'payments',
-                 'files/apple-developer-merchantid-domain-association')
-    logger.info(fpath)
-    f = open(fpath)
-    content = f.read()
-    f.close()
-
-    return HttpResponse(content, content_type='text/plain')

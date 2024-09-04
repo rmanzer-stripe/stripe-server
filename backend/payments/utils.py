@@ -54,3 +54,12 @@ def rm_empty_customers():
     for customer in customers.auto_paging_iter():
         if customer['name'] == None or customer['name'] == 'Old Subscription Flow':
             stripe.Customer.delete(customer['id'])
+
+
+def list_of_stuff(list: list, redact: bool):
+    """_summary_
+
+    Args:
+        list (list): _description_
+        redact (bool): _description_
+    """

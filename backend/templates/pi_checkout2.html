@@ -18,7 +18,7 @@ Hold this Payment!
                 <span class="card-title black-text ">Payment Intent for Stuff</span>
             </div>
             <div class="card-content">
-                <form action="" id="payment-form" data-secret="{{client_secret}}">
+                <form action="" id="payment-form" data-secret="{{client_secret}}" data-next-action="{{next_action}}">
                     {% csrf_token %}
                     <div id="card-element">
                         <!-- Elements to create inputs here-->

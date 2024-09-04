@@ -24,7 +24,7 @@
                             <div class="input-field col s12">
                                 <select name="price_id" id="price_id">
                                     {% for price in prices %}
-                                        <option value="{{price.id}}">{{price.unit_amount|stripe_amount:'usd'}}</option>
+                                        <option value="{{price.id}}">{{price.unit_amount}}</option>
                                     {% endfor %}
                                 </select>
                             </div>

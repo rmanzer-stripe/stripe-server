@@ -37,7 +37,7 @@ Buy This Thing!
 {% block script %}
 <script>
 fetch(appUrls.config).then(result => result.json()).then(data => {
-        stripe = Stripe(data.publicKey)
+        stripe = Stripe(data.publicKey, {apiVersion: '2020-08-27', locale: 'de'})
     }).then(() => {
         const appearance = {theme: 'night', labels: 'floating'}
         var elements = stripe.elements(appearance);
@@ -57,7 +57,7 @@ fetch(appUrls.config).then(result => result.json()).then(data => {
                 displayError.textContent = '';
             }
             });
-            var form = document.getElementById('payment-form');
+        var form = document.getElementById('payment-form');
 
         form.addEventListener('submit', (ev) => {
             ev.preventDefault();

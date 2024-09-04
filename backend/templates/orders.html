@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+New Payments Intent
+{% endblock title %}
+
+{% block main %}
+<div class="container">
+    <div class="row">
+        
+    <div class="col s12">
+        <div class="card">
+            <div class="card-image">
+                <img 
+                  src="https://images.pexels.com/photos/7130475/pexels-photo-7130475.jpeg?cs=srgb&dl=pexels-gradienta-7130475.jpg&fm=jpg" 
+                  alt="red" 
+                  height="200"
+                  >
+                <span class="card-title">Order Some Stuff</span>
+            </div>
+            <div class="card-content">
+                <form action="" method="post" id="orderSubmit">
+                    {% csrf_token %}
+                    <input type="hidden"  name="order" value="{{order_id}}">
+                </form>
+                <form action="" id="payment-form" data-secret="{{client_secret}}" >
+                    <div id="payment-element">
+                        <!-- Stripe loads stuff here -->
+                    </div>
+                </form>
+            </div>
+            <div class="card-action center-align">
+                <button form="payment-form" type="submit" class="btn btn-primary">
+                    <i class="material-icons left">credit_card</i>
+                    Auto Pay
+                </button>
+                <div class="row">
+                    <div id="error-message" style="display:none">
+                        <!-- Display error messages to users -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    </div>
+</div>
+{% endblock main %}
+
+{% block script %}
+
+    <script src="{% static 'js/orders.js' %}"></script>
+{% endblock script %}

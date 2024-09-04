@@ -1,38 +1,62 @@
 version: "3.4"
 services:
-  stripe:
+  # Servers
+  django:
     restart: always
     build:
       context: ./backend
+    container_name: app
+    image: app:latest
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/usr/src/app
+      - ./backend:/code
     env_file: .env
     command: ./manage.py runserver 0.0.0.0:8000
+  # nuxt:
+  #   restart: always
+  #   build:
+  #     context: ./frontend
+  #   container_name: nuxt
+  #   image: nuxt:latest
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./frontend/stripe2:/usr/src/nuxt-app
+  #   command: ["npm", "run", "dev"]
   worker:
     restart: always
     build:
       context: ./backend
     volumes:
-      - ./backend:/usr/src/app
+      - ./backend:/code
     env_file: .env
+    container_name: worker
+    image: worker:latest
     links:
-      - stripe
+      - django
       - postgres
       - redis
     depends_on:
       - redis
     command: celery -A stripe_server worker -l info
-  scheduler:
-    restart: alaways
+  flower:
+    restart: always
     build:
       context: ./backend
-    command: celery -A stripe_server beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    env_file:
-      - .env
+    volumes:
+      - ./backend:/code
+    env_file: .env
+    links:
+      - django
+      - postgres
+      - redis
     depends_on:
       - redis
+    ports:
+      - "5555:5555"
+    command: celery -A stripe_server flower -l info
+  # Data stores
   postgres:
     image: postgres:latest
     restart: always
@@ -41,21 +65,24 @@ services:
       - pg_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-  
   redis:
     image: redis:latest
     restart: always
     env_file:
       - .env
-    
-  rabbitmq:
-    image: rabbitmq:latest
-    restart: always
-    hostname: rabbitmq
-    ports:
-      - "15672:15672"
-    env_file:
-      - .env
+
+  # rabbitmq:
+  #   image: rabbitmq:latest
+  #   restart: always
+  #   hostname: rabbitmq
+  #   ports:
+  #     - "15672:15672"
+  #   env_file:
+  #     - .env
 
 volumes:
   pg_data: {}
+
+networks:
+  my_network:
+    name: my_network

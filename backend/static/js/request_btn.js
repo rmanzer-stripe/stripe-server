@@ -10,7 +10,7 @@ stripeInit().then(() => {
         currency: 'usd',
         total: {
             label: 'demo total',
-            amount: 100
+            amount: 1000
         },
         requestPayerName: true,
         requestPayerEmail: true,
@@ -21,12 +21,14 @@ stripeInit().then(() => {
     const prButton = elements.create('paymentRequestButton', { paymentRequest });
 
     paymentRequest.canMakePayment().then((result) => {
+        console.log(result)
         if (result) {
             prButton.mount('#payment-request-button');
         } else {
             document.getElementById('payment-request-button').style.display = 'none';
         }
     });
+    
 
     paymentRequest.on('paymentmethod', (ev) => {
         stripe.confirmCardPayment(

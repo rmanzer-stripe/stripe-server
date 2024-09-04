@@ -5,7 +5,7 @@
 
     <div class="container">
         <div class="row">
-            <div class="col s12">
+            <!-- <div class="col s12">
                 <ul class="tabs">
                     <li class="tab col3"><a href="#tab1">Buy Stuff</a></li>
                     <li class="tab col3"><a href="#tab2">Intend Stuff</a></li>
@@ -13,9 +13,27 @@
                     <li class="tab col3"><a href="#tab4">Recent Stuff</a></li>
                     <li class="tab col2"><a href="#tab5" class="active">Current Stuff</a></li>
                 </ul>
-            </div>
+            </div> -->
             <div id="tab1" class="col s12">
                 <div class="row">
+                    <div class="col s12 m6 l4">
+                        <div class="card">
+                            <div class="card-image">
+                                <img src="https://images.pexels.com/photos/206959/pexels-photo-206959.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" alt="apple"
+                                    height="300"
+                                >
+                                <span class="card-title">Express Checkout Element</span>
+                            </div> 
+                            <div class="card-content">
+                                Implementing the Express Checkout Eleement with a deferred intent flow on a site with a hosted Apple Pay file
+                            </div>
+                            <div class="card-action center-align">
+                                <a href="{% url 'payments:ece'}" class="btn btn-primary" id="ece-button">
+                                    Express Checkout
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 <div class="col s12 m6 l4">
                     <div class="card">
                         <div class="card-image">
@@ -292,6 +310,26 @@
                         </div>
                         <div class="card-action center-align">
                             <a href="{% url 'payments:checkout-subscribe' %}" 
+                            class="btn btn-primary">
+                            <i class="material-icons">autorenew</i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col s12 m6 l4">
+                    <div class="card">
+                        <div class="card-image">
+                            <img 
+                            height=300
+                            src="https://images.pexels.com/photos/6169668/pexels-photo-6169668.jpeg?cs=srgb&dl=pexels-tima-miroshnichenko-6169668.jpg&fm=jpg"
+                            ></img>
+                            <span class="card-title">Orders (Beta)</span>
+                        </div>
+                        <div class="card-content">
+                            Looks like a Payment Intent, behaves like Checkout, now deprecated
+                        </div>
+                        <div class="card-action center-align">
+                            <a href="{% url 'payments:orders' %}" 
                             class="btn btn-primary">
                             <i class="material-icons">autorenew</i>
                             </a>

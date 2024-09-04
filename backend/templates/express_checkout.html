@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block main %}
+<div class="container">
+    <div class="row center-align">
+        <h1>Express Checkout Element</h1>
+        <div id="key-store" data-pk="{{ PK }}"></div>
+        <button id="mount-ece" class="btn btn-primary">Mount Express Checkout Element</button>
+        <div id="ece"></div>
+    </div>
+</div>
+{% endblock main %}
+
+{% block script %}
+<script>
+    const pk = document.getElementById('key-store').dataset.pk
+    const stripe = Stripe(pk)
+    const elements = await stripe.elements({
+        mode: 'payment',
+        amount: 1099,
+        currency: 'usd',
+    })
+    document.getElementById('mount-ece').addEventListener('click', () => {
+        console.log('CLicked');
+        const expressCheckoutElement = elements.create('expressCheckout')
+        expressCheckoutElement.mount('#ece')
+    })
+</script>
+{% endblock script %}

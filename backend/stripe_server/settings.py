@@ -23,6 +23,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 
+
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
@@ -30,6 +32,7 @@ ALLOWED_HOSTS = [
     '*'
 ]
 
+APPEND_SLASH = True
 
 # Application definition
 
@@ -54,6 +57,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -153,6 +157,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY')
 STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
 STRIPE_ENDPOINT_SECRET = os.getenv('STRIPE_ENDPOINT_SECRET')
+STRIPE_API_VERSION = os.getenv('STRIPE_API_VERSION')
 
 
 # Configuring Django logging
@@ -167,7 +172,7 @@ LOGGING = {
             'style': '{',
         },
         'simple': {
-            'format': '{levelname} {filename} {lineno} {message}',
+            'format': '{asctime} {levelname} {filename} {lineno} {message}',
             'style': '{',
         },
     },
@@ -211,7 +216,7 @@ LOGGING = {
 # https://www.django-rest-framework.org/api-guide/settings/
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'api.pagination.PageCountPaginator',
-    'PAGE_SIZE': 10,
+    'PAGE_SIZE': 100,
     "DEFAULT_RENDERDER_CLASSES": [
         'rest_framework.renderers.JSONRenderer',
     ],
@@ -241,8 +246,14 @@ REST_FRAMEWORK = {
 # Django CORS Headers SEttings
 # https://pypi.org/project/django-cors-headers/
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:3100",
+    "http://localhost:8000",
+    "https://rmanzer-app.tunnel.stripe.me",
+    "http://127.0.0.1:3000",
 
+]
 
 # CELERY SETTINGS
 # https://docs.celeryproject.org/en/stable/django/first-steps-with-django.html#using-celery-with-django

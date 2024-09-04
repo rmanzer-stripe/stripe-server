@@ -20,16 +20,28 @@ New Payments Intent
                 <span class="card-title">Payment Intent UPE</span>
             </div>
             <div class="card-content">
-                <form action="" id="payment-form" data-secret="{{client_secret}}">
-                    <div id="payment-element">
+                <form action="" id="payment-form" data-secret="{{client_secret}}" data-key="{{meta_key}}" data-val="{{meta_val}}">
+                    <div id="address-element" class="mb-4">
+                        <!-- Stipe loads stuff here -->
+                    </div>
+                    <div id="payment-element" class="mt-4">
                         <!-- Stripe loads stuff here -->
                     </div>
+                    <!-- <div id="save-div" class="my-4">
+                        <label>
+                            <input type="checkbox" id="save_for_later" />
+                            <span>Save card for later</span>
+                        </label>
+                    </div> -->
                 </form>
             </div>
             <div class="card-action center-align">
+          
+                <!-- <button class="btn btn-indigo" id="save-card">Save Card</button> -->
+               
                 <button form="payment-form" type="submit" class="btn btn-primary">
                     <i class="material-icons left">credit_card</i>
-                    Auto Pay
+                    Pay
                 </button>
                 <div class="row">
                     <div id="error-message" style="display:none">
@@ -39,6 +51,10 @@ New Payments Intent
             </div>
         </div>
     </div>
+    
+    {% if stan_api_key %}
+        <div id="api_key" data-key="{{stan_api_key}}"></div>
+    {% endif %}
     
     </div>
 </div>
